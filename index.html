@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camping Náutico Rapel - Sistema de Gestión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuración extendida de Tailwind CSS para añadir más columnas a la grilla.
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    gridTemplateColumns: {
+                        '15': 'repeat(15, minmax(0, 1fr))',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos para animaciones de diálogos (modales) */
+        [data-state=open] { display: block; }
+        [data-state=closed] { display: none; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        .animate-out { animation: fadeOut 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+
+        /* Estilos para la funcionalidad de impresión de reportes */
+        @media print {
+            body * {
+                visibility: hidden; /* Oculta todo por defecto al imprimir */
+            }
+            .printable-report, .printable-report * {
+                visibility: visible; /* Muestra solo el reporte y su contenido */
+            }
+            .printable-report {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 2rem;
+                font-size: 12px;
+            }
+            .no-print {
+                display: none !important; /* Oculta elementos que no deben imprimirse */
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, StrictMode } = React;
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 1. CONFIGURACIÓN INICIAL Y CONSTANTES
+        // —————————————————————————————————————————————————————————————————————————————————
+        
+        const DEFAULT_SITIOS_LIST = Array.from({ length: 105 }, (_, i) => String(i + 1));
+        const generateDefaultTiposDeSitio = (sitios) => sitios.reduce((acc, sitio) => { acc[sitio] = 'normal'; return acc; }, {});
+
+        const DEFAULT_TARIFAS_CONFIG = {
+          mesesTemporada: { alta: [0, 1], media: [11, 2, 8, 9], baja: [3, 4, 5, 6, 7, 10] },
+          precios: {
+            alta: { orilla: 80000, normal: 70000, especial: 90000 },
+            media: { orilla: 60000, normal: 50000, especial: 70000 },
+            baja: { orilla: 45000, normal: 35000, especial: 55000 },
+          },
+          adicionalPorPersona: { alta: 15000, media: 10000, baja: 8000 },
+          precioPiscina: { alta: 10000, media: 7000, baja: 5000 },
+          maxPersonasBase: 5,
+          horaMedioDia: 15,
+        };
+        
+        const dateToYMD = (date) => date.toISOString().slice(0, 10);
+        const DEFAULT_FORM_STATE = { sitio: 0, rut: "", nombre: "", edadTitular: 18, telefono: "", email: "", patentes: [""], checkin: dateToYMD(new Date()), checkinTime: "12:00", checkout: "", adultos: 1, ninos: 0, vehiculos: 1, observaciones: "", estado: "reservado", integrantes: [], acompReserva: 0, pagos: [], visitas: [], descuentoTipo: 'monto', descuentoValor: 0 };
+        const DEFAULT_PISCINA_FORM_STATE = { id: '', tipo: 'piscina', nombre: '', rut: '', edadTitular: 18, telefono: '', email: '', patentes: [""], integrantes: [], pagos: [], totalCLP: 0, createdAt: '', descuentoTipo: 'monto', descuentoValor: 0 };
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 2. FUNCIONES DE AYUDA (HELPERS)
+        // —————————————————————————————————————————————————————————————————————————————————
+
+        function getTemporada(date, config) {
+          const month = date.getMonth();
+          if (config.mesesTemporada.alta.includes(month)) return 'alta';
+          if (config.mesesTemporada.media.includes(month)) return 'media';
+          return 'baja';
+        }
+        function uuid() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = (Math.random() * 16) | 0; const v = c === "x" ? r : (r & 0x3) | 0x8; return v.toString(16); }); }
+        function validarRUT(rut) { if (!rut) return false; const limpio = rut.replace(/\./g, "").replace(/-/g, "").toUpperCase(); if (!/^\d{7,8}[0-9K]$/.test(limpio)) return false; const cuerpo = limpio.slice(0, -1); const dv = limpio.slice(-1); let suma = 0, multiplo = 2; for (let i = cuerpo.length - 1; i >= 0; i--) { suma += parseInt(cuerpo[i], 10) * multiplo; multiplo = multiplo === 7 ? 2 : multiplo + 1; } const resto = 11 - (suma % 11); const dvCalc = resto === 11 ? "0" : resto === 10 ? "K" : String(resto); return dvCalc === dv; }
+        function diasEstadia(checkin, checkout) { if (!checkin || !checkout) return 0; const a = new Date(checkin + "T12:00:00"); const b = new Date(checkout + "T12:00:00"); if (b < a) return 0; const diffTime = b.getTime() - a.getTime(); const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); return diffDays + 1; }
+        function calcularCostos(form, tarifasConfig, tiposDeSitio) {
+            const { checkin, checkout, checkinTime, adultos, ninos, sitio, visitas = [], descuentoTipo, descuentoValor } = form;
+            if (!checkin || !checkout || !checkinTime || !sitio) {
+                return { totalEstadia: 0, totalVisitas: 0, subtotal: 0, totalDescuento: 0, totalGeneral: 0 };
+            }
+            const dias = diasEstadia(checkin, checkout);
+            if (dias <= 0) {
+                 return { totalEstadia: 0, totalVisitas: 0, subtotal: 0, totalDescuento: 0, totalGeneral: 0 };
+            }
+            const sitioTipo = tiposDeSitio[sitio] || 'normal';
+            const ocupantesPrincipales = adultos + ninos;
+            const adicionalesPrincipales = Math.max(0, ocupantesPrincipales - tarifasConfig.maxPersonasBase);
+            const [checkinHour] = checkinTime.split(':').map(Number);
+            let totalEstadia = 0;
+            let totalVisitas = 0;
+            for (let i = 0; i < dias; i++) {
+                const currentDate = new Date(checkin + "T12:00:00");
+                currentDate.setDate(currentDate.getDate() + i);
+                const currentDateYMD = dateToYMD(currentDate);
+                const temporada = getTemporada(currentDate, tarifasConfig);
+                const precioBaseDia = tarifasConfig.precios[temporada][sitioTipo];
+                const costoAdicionalPrincipalDia = adicionalesPrincipales * tarifasConfig.adicionalPorPersona[temporada];
+                let costoEstadiaHoy = precioBaseDia + costoAdicionalPrincipalDia;
+                if (i === 0 && checkinHour >= tarifasConfig.horaMedioDia) {
+                    costoEstadiaHoy = (precioBaseDia / 2) + costoAdicionalPrincipalDia;
+                }
+                totalEstadia += costoEstadiaHoy;
+                let personasVisitaHoy = 0;
+                visitas.forEach(visita => {
+                    if (visita.checkin && visita.checkout && visita.checkin <= currentDateYMD && visita.checkout >= currentDateYMD) {
+                        personasVisitaHoy += (visita.integrantes || []).length;
+                    }
+                });
+                if (personasVisitaHoy > 0) {
+                    const cuposDisponibles = Math.max(0, tarifasConfig.maxPersonasBase - ocupantesPrincipales);
+                    const visitantesQuePaganHoy = Math.max(0, personasVisitaHoy - cuposDisponibles);
+                    if (visitantesQuePaganHoy > 0) {
+                        let costoVisitasHoy = visitantesQuePaganHoy * tarifasConfig.adicionalPorPersona[temporada];
+                        const esPrimerDiaDeAlgunaVisita = visitas.some(v => v.checkin === currentDateYMD);
+                        if(esPrimerDiaDeAlgunaVisita && checkinHour >= tarifasConfig.horaMedioDia) {
+                             costoVisitasHoy /= 2;
+                        }
+                        totalVisitas += costoVisitasHoy;
+                    }
+                }
+            }
+            const subtotal = totalEstadia + totalVisitas;
+            let totalDescuento = 0;
+            if (descuentoValor > 0) {
+                if (descuentoTipo === 'porcentaje') {
+                    totalDescuento = Math.round(subtotal * (descuentoValor / 100));
+                } else {
+                    totalDescuento = descuentoValor;
+                }
+            }
+            const totalGeneral = Math.max(0, subtotal - totalDescuento);
+            return { totalEstadia, totalVisitas, subtotal, totalDescuento, totalGeneral };
+        }
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 3. HOOKS PERSONALIZADOS (CUSTOM HOOKS)
+        // —————————————————————————————————————————————————————————————————————————————————
+        
+        function usePersistentState(key, defaultValue) {
+          const [state, setState] = useState(() => {
+            try {
+              const raw = localStorage.getItem(key);
+              return raw ? JSON.parse(raw) : defaultValue;
+            } catch {
+              return defaultValue;
+            }
+          });
+          useEffect(() => {
+            localStorage.setItem(key, JSON.stringify(state));
+          }, [key, state]);
+          return [state, setState];
+        }
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 4. COMPONENTES DE UI REUTILIZABLES
+        // —————————————————————————————————————————————————————————————————————————————————
+
+        const Card = ({ children, className }) => <div className={`border rounded-lg shadow-sm ${className}`}>{children}</div>;
+        const CardHeader = ({ children, className }) => <div className={`p-6 ${className}`}>{children}</div>;
+        const CardTitle = ({ children, className }) => <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>{children}</h3>;
+        const CardDescription = ({ children, className }) => <p className={`text-sm text-neutral-500 dark:text-neutral-400 ${className}`}>{children}</p>;
+        const CardContent = ({ children, className }) => <div className={`p-6 pt-0 ${className}`}>{children}</div>;
+        const Button = ({ children, onClick, variant = 'default', size = 'default', className = '', disabled, title = '' }) => {
+            const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+            const sizeClasses = size === 'icon' ? 'h-10 w-10' : 'h-10 px-4 py-2';
+            const variantClasses = {
+                default: "bg-neutral-900 text-neutral-50 hover:bg-neutral-900/90 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-50/90",
+                destructive: "bg-red-500 text-neutral-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-neutral-50 dark:hover:bg-red-900/90",
+                outline: "border border-input bg-background hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-800 dark:hover:text-neutral-50",
+                secondary: "bg-neutral-100 text-neutral-900 hover:bg-neutral-100/80 dark:bg-neutral-800 dark:text-neutral-50 dark:hover:bg-neutral-800/80",
+                ghost: "hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-50",
+            }[variant];
+            return <button onClick={onClick} disabled={disabled} title={title} className={`${baseClasses} ${sizeClasses} ${variantClasses} ${className}`}>{children}</button>;
+        };
+        const Input = ({ type, value, onChange, placeholder, readOnly, className, min, max }) => <input type={type} value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} min={min} max={max} className={`flex h-9 w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
+        const Label = ({ children, htmlFor, className }) => <label htmlFor={htmlFor} className={`text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}>{children}</label>;
+        const Badge = ({ children, variant, className }) => <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${className}`}>{children}</div>;
+        const Dialog = ({ open, onOpenChange, children }) => {
+            if (!open) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 animate-in p-4">
+                    <div className="relative" onClick={e => e.stopPropagation()}>{children}</div>
+                </div>
+            );
+        };
+        const DialogContent = ({ children, className }) => <div className={`relative z-50 grid w-full max-w-lg gap-4 border bg-neutral-50 dark:bg-neutral-950 p-6 shadow-lg duration-200 rounded-lg ${className}`}>{children}</div>;
+        const DialogHeader = ({ children, className }) => <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`}>{children}</div>;
+        const DialogTitle = ({ children, className }) => <h2 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>{children}</h2>;
+        const DialogDescription = ({ children, className }) => <p className={`text-sm text-neutral-500 dark:text-neutral-400 ${className}`}>{children}</p>;
+        const Select = ({ value, onValueChange, children }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const childArray = React.Children.toArray(children).flat();
+            const selectedChild = childArray.find(child => child.type === SelectItem && child.props.value === value);
+            return (
+                <div className="relative">
+                    <button onClick={() => setIsOpen(!isOpen)} className="flex h-9 w-full items-center justify-between rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 capitalize">
+                        {selectedChild ? selectedChild.props.children : 'Seleccionar...'}
+                    </button>
+                    {isOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-neutral-900 border rounded-md shadow-lg">
+                           {childArray.map((child, index) => 
+                                child.type === SelectItem ? React.cloneElement(child, { key: index, onSelect: (val) => { onValueChange(val); setIsOpen(false); } }) : null
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        const SelectItem = ({ value, children, onSelect }) => <div onClick={() => onSelect(value)} className="px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer capitalize">{children}</div>;
+        const Tabs = ({ defaultValue, children }) => {
+            const [activeTab, setActiveTab] = useState(defaultValue);
+            return (
+                <div>
+                    {React.Children.map(children, child => {
+                        if (child.type === TabsList || child.type === TabsContent) {
+                            return React.cloneElement(child, { activeTab, setActiveTab });
+                        }
+                        return child;
+                    })}
+                </div>
+            );
+        };
+        const TabsList = ({ children, activeTab, setActiveTab, className }) => (<div className={`inline-flex h-10 items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-800 p-1 text-neutral-500 dark:text-neutral-400 ${className}`}>{React.Children.map(children, child => React.cloneElement(child, { activeTab, setActiveTab }))}</div>);
+        const TabsTrigger = ({ value, children, activeTab, setActiveTab }) => (<button onClick={() => setActiveTab(value)} className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === value ? 'bg-white dark:bg-neutral-950 text-neutral-950 dark:text-neutral-50 shadow-sm' : ''}`}>{children}</button>);
+        const TabsContent = ({ value, children, activeTab }) => (activeTab === value ? <div>{children}</div> : null);
+        
+        // Iconos SVG como componentes de React para fácil reutilización.
+        const IconCalendar = ({ className = "" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>);
+        const IconMap = ({ className = "" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>);
+        const IconMoon = ({ className = "" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>);
+        const IconSun = ({ className = "" }) => ( <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>);
+        const IconSettings = ({ className = "" }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>);
+        const IconFileText = ({ className = "" }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>);
+        const IconUsers = ({ className = "" }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>);
+        const IconX = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>);
+        const IconShoppingCart = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>);
+        const IconMinus = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>);
+        const IconPlus = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+
+
+        const DialogCloseButton = ({ onClick }) => (
+            <button onClick={onClick} className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none no-print">
+                <IconX className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+            </button>
+        );
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 5. COMPONENTES ESPECÍFICOS DE LA APLICACIÓN
+        // —————————————————————————————————————————————————————————————————————————————————
+
+        const Sidebar = ({ resumen, filtroEstado, setFiltroEstado, onSetDark, isDark, onOpenReportes, onOpenSettings, onOpenImportExport, onOpenGastos, onOpenMapa }) => {
+            const Estado = ({ label, value }) => { 
+                const colorClass = { 
+                    'Libres': 'text-emerald-500', 
+                    'Reservados': 'text-amber-500', 
+                    'Ocupados': 'text-blue-600', 
+                    'Mant.': 'text-neutral-500', 
+                    'Piscina Hoy': 'text-cyan-500',
+                    'Personas Hoy': 'text-indigo-500' 
+                }[label] || 'text-neutral-800'; 
+                return ( <div className="rounded-xl p-3 border shadow-sm bg-white dark:bg-neutral-900"><div className="text-xs opacity-70">{label}</div><div className={`mt-1 text-xl font-semibold ${colorClass}`}>{value}</div></div> );
+            };
+            return (
+                <aside className="w-72 p-4 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200/60 dark:border-neutral-800 flex flex-col gap-4 no-print">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-xl font-semibold">Camping Náutico Rapel</h1>
+                        <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema">{isDark ? <IconSun className="h-4 w-4"/> : <IconMoon className="h-4 w-4"/>}</Button>
+                    </div>
+                    <Card>
+                        <CardHeader className="pb-2"><CardTitle>Estado general</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-2">
+                            <Estado label="Libres" value={resumen.libres}/>
+                            <Estado label="Reservados" value={resumen.reservados}/>
+                            <Estado label="Ocupados" value={resumen.ocupados}/>
+                            <Estado label="Mant." value={resumen.mant}/>
+                            <Estado label="Piscina Hoy" value={resumen.piscinaHoy} />
+                            <Estado label="Personas Hoy" value={resumen.personasHoy} />
+                            <div className="col-span-2 text-sm mt-2"><b>Ingreso estimado: </b>${resumen.ingresoEstimado.toLocaleString("es-CL")}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2"><CardTitle>Filtrar sitios</CardTitle></CardHeader>
+                        <CardContent>
+                            <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                                <SelectItem value="todos">Todos</SelectItem><SelectItem value="libre">Libres</SelectItem>
+                                <SelectItem value="reservado">Reservados</SelectItem><SelectItem value="ocupado">Ocupados</SelectItem>
+                                <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+                            </Select>
+                        </CardContent>
+                    </Card>
+                    <div className="mt-auto flex flex-col gap-2">
+                        <Button className="w-full" variant="outline" onClick={onOpenMapa}><IconMap className="h-4 w-4 mr-2"/> Ver Mapa del Camping</Button>
+                        <Button className="w-full" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-4 w-4 mr-2"/> Ingreso de Gastos</Button>
+                        <Button className="w-full" variant="outline" onClick={onOpenReportes}><IconFileText className="h-4 w-4 mr-2"/> Reportes</Button>
+                        <Button className="w-full" variant="outline" onClick={onOpenSettings}><IconSettings className="h-4 w-4 mr-2"/> Configuración de Tarifas</Button>
+                        <Button className="w-full" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-4 w-4 mr-2"/> Exportar / Importar</Button>
+                    </div>
+                </aside>
+            );
+        };
+        
+        const SiteGrid = ({ sitios, onSitioClick, estadoPorSitio, tiposDeSitio }) => {
+            const colorPorEstado = (est, tipo) => { 
+                switch (est) { 
+                    case "reservado": return "bg-amber-100 dark:bg-amber-950/40 border-amber-300 text-amber-900 dark:text-amber-200"; 
+                    case "ocupado": return "bg-blue-100 dark:bg-blue-950/40 border-blue-300 text-blue-900 dark:text-blue-200"; 
+                    case "mantenimiento": return "bg-neutral-200 dark:bg-neutral-800 border-neutral-400 text-neutral-700 dark:text-neutral-200"; 
+                    default: 
+                        switch (tipo) { 
+                            case 'orilla': return 'bg-green-300 dark:bg-green-900/60 border-green-400 text-green-900 dark:text-green-200'; 
+                            case 'especial': return 'bg-teal-300 dark:bg-teal-900/60 border-teal-400 text-teal-800 dark:text-teal-200'; 
+                            default: return "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200"; 
+                        } 
+                } 
+            };
+
+            return (
+                <div className="grid grid-cols-5 md:grid-cols-7 lg:grid-cols-10 xl:grid-cols-15 gap-2">
+                    {sitios.map((n) => {
+                        const estado = (estadoPorSitio[n] || {}).estado || "libre";
+                        const tipo = tiposDeSitio[n] || 'normal';
+                        return (
+                            <button key={n} onClick={() => onSitioClick(n)} className={`relative aspect-square rounded-xl p-2 text-sm font-medium shadow-sm border flex items-center justify-center hover:scale-[1.02] transition-transform ${colorPorEstado(estado, tipo)}`} aria-label={`Sitio ${n}`}>
+                                <span className="font-bold text-2xl">{n}</span>
+                                <small className="absolute bottom-1 right-2 opacity-80 uppercase text-[10px]">{estado}</small>
+                            </button>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const FichaDeIngresoDialog = ({ open, onOpenChange, form, setForm, errors, guardarReserva, liberarSitio, tiposDeSitio, tarifasConfig, handleIntegranteChange, handlePagoChange, handleVisitaChange, handleVisitaIntegranteChange, handleAgregarVisita, handleEliminarVisita, handleAgregarVisitaIntegrante, onOpenDescuento, onOpenPatentes, handlePatenteChange }) => { 
+            const formDias = useMemo(() => diasEstadia(form.checkin || '', form.checkout || ''), [form.checkin, form.checkout]); 
+            const { totalEstadia, totalVisitas, subtotal, totalDescuento, totalGeneral } = useMemo(() => calcularCostos(form, tarifasConfig, tiposDeSitio), [form, tarifasConfig, tiposDeSitio]); 
+            const totalPagado = useMemo(() => (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0), [form.pagos]); 
+            const saldoPendiente = totalGeneral - totalPagado; 
+            const METODOS_PAGO = [ { value: 'efectivo', label: 'Efectivo' }, { value: 'debito', label: 'Débito' }, { value: 'credito', label: 'Crédito' }, { value: 'transferencia', label: 'Transferencia' } ]; 
+            return ( 
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                    <DialogCloseButton onClick={() => onOpenChange(false)} />
+                    <DialogHeader className="p-6 border-b">
+                        <DialogTitle>{form.id ? 'Editando Ficha' : 'Nueva Ficha'} para Sitio #{form.sitio} (<span className="capitalize">{tiposDeSitio[form.sitio || 0]}</span>)</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <Card>
+                            <CardHeader><CardTitle>Datos del Titular</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-12 gap-4 items-start">
+                                    <div className="col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={(e) => setForm({ ...form, rut: e.target.value })} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
+                                    <div className="col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
+                                    <div className="col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular} onChange={(e) => setForm({ ...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
+                                    <div className="col-span-2"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={(e) => setForm({ ...form, telefono: e.target.value})} /></div>
+                                    <div className="col-span-2"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value})} /></div>
+                                    <div className="col-span-2 flex items-end gap-1">
+                                        <div className="flex-grow">
+                                            <Label>Patente Principal</Label>
+                                            <Input value={(form.patentes && form.patentes[0]) || ''} onChange={(e) => handlePatenteChange(0, e.target.value)} />
+                                        </div>
+                                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={onOpenPatentes} disabled={!form.rut || !form.nombre || !(form.patentes && form.patentes[0])} title={(!form.rut || !form.nombre || !(form.patentes && form.patentes[0])) ? "Debe ingresar RUT, Nombre y Patente Principal primero" : "Gestionar patentes adicionales"}>
+                                            <IconPlus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader><CardTitle>Detalles de la Estadía</CardTitle></CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-6 gap-4">
+                                    <div><Label htmlFor="checkin">Check-in</Label><Input id="checkin" type="date" value={form.checkin || ''} onChange={(e) => setForm({ ...form, checkin: e.target.value })} /></div>
+                                    <div><Label htmlFor="checkinTime">Hora Ingreso</Label><Input id="checkinTime" type="time" value={form.checkinTime || ''} onChange={(e) => setForm({ ...form, checkinTime: e.target.value })} /></div>
+                                    <div><Label htmlFor="checkout">Check-out</Label><Input id="checkout" type="date" value={form.checkout || ''} onChange={(e) => setForm({ ...form, checkout: e.target.value })} /></div>
+                                    <div><Label htmlFor="adultos">Adultos</Label><Input id="adultos" type="number" min={1} value={form.adultos || ''} onChange={(e) => setForm({ ...form, adultos: parseInt(e.target.value || "0", 10) })} readOnly={form.estado === 'ocupado'} className={form.estado === 'ocupado' ? 'bg-neutral-100 dark:bg-neutral-800 cursor-not-allowed' : ''}/></div>
+                                    <div><Label htmlFor="ninos">Niños</Label><Input id="ninos" type="number" min={0} value={form.ninos || ''} onChange={(e) => setForm({ ...form, ninos: parseInt(e.target.value || "0", 10) })} readOnly={form.estado === 'ocupado'} className={form.estado === 'ocupado' ? 'bg-neutral-100 dark:bg-neutral-800 cursor-not-allowed' : ''}/></div>
+                                    <div><Label htmlFor="vehiculos">Vehículos</Label><Input id="vehiculos" type="number" min={0} value={form.vehiculos || ''} onChange={(e) => setForm({ ...form, vehiculos: parseInt(e.target.value || "0", 10) })} /></div>
+                                </div>
+                                {errors.checkout && <p className="text-xs text-red-500 mt-1 text-right">{errors.checkout}</p>}
+                                {errors.dateConflict && <p className="text-xs text-red-500 mt-1 text-center font-semibold">{errors.dateConflict}</p>}
+                            </CardContent>
+                        </Card>
+                        {form.estado === 'ocupado' && (
+                            <Card>
+                                <CardHeader className="flex justify-between items-center">
+                                    <CardTitle>Acompañantes del Titular</CardTitle>
+                                    <Button variant="outline" size="sm" onClick={() => setForm({ ...form, integrantes: [...(form.integrantes || []), { rut: "", nombre: "", edad: 0 }] })}>+ Agregar Persona</Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">{form.integrantes && form.integrantes.length > 0 && (<div className="grid grid-cols-12 gap-2 px-1 items-center"><div className="col-span-4"><Label className="text-xs text-neutral-500">RUT (Opcional)</Label></div><div className="col-span-5"><Label className="text-xs text-neutral-500">Nombre</Label></div><div className="col-span-2"><Label className="text-xs text-neutral-500">Edad</Label></div><div className="col-span-1"></div></div>)}{(form.integrantes || []).map((p, i) => ( <div key={i} className="grid grid-cols-12 gap-2 items-start"><div className="col-span-4"><Input placeholder="12.345.678-K" value={p.rut} onChange={(e) => handleIntegranteChange(i, "rut", e.target.value)} />{errors[`int_rut_${i}`] && <p className="text-xs text-red-500 mt-1">{errors[`int_rut_${i}`]}</p>}</div><div className="col-span-5"><Input placeholder="Nombre del Acompañante" value={p.nombre} onChange={(e) => handleIntegranteChange(i, "nombre", e.target.value)} />{errors[`int_nombre_${i}`] && <p className="text-xs text-red-500 mt-1">{errors[`int_nombre_${i}`]}</p>}</div><div className="col-span-2"><Input type="number" placeholder="0" value={p.edad} onChange={(e) => handleIntegranteChange(i, "edad", parseInt(e.target.value || "0", 10))} />{errors[`int_edad_${i}`] && <p className="text-xs text-red-500 mt-1">{errors[`int_edad_${i}`]}</p>}</div><div className="col-span-1 flex items-center justify-center"><Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-9 w-9" onClick={() => { const arr = (form.integrantes || []).filter((_, idx) => idx !== i); setForm({ ...form, integrantes: arr }); }}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></Button></div></div> ))}{(!form.integrantes || form.integrantes.length === 0) && <p className="text-xs text-center opacity-70 py-4">Sin acompañantes agregados.</p>}</div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {form.estado === 'reservado' && (<Card><CardHeader><CardTitle>Datos de la Reserva</CardTitle></CardHeader><CardContent><Label>Cant. acompañantes (adicionales al titular)</Label><Input type="number" min={0} value={form.acompReserva ?? 0} onChange={(e) => setForm({ ...form, acompReserva: parseInt(e.target.value || "0", 10) })} /><p className="text-[11px] opacity-70 mt-1">Para reservas preliminares, basta con la cantidad total de personas.</p></CardContent></Card>)}
+                         {form.estado === 'ocupado' && (
+                            <Card>
+                                <CardHeader className="flex justify-between items-center">
+                                    <CardTitle>Ingreso de Visitas al Sitio</CardTitle>
+                                    <Button variant="outline" size="sm" onClick={handleAgregarVisita}>+ Agregar Grupo de Visita</Button>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {(form.visitas || []).map((visita, vIndex) => (
+                                        <div key={visita.id} className="border p-3 rounded-md space-y-2 bg-neutral-50 dark:bg-neutral-900/50">
+                                            <div className="flex justify-between items-start">
+                                                <div className="grid grid-cols-3 gap-2 flex-grow">
+                                                    <div><Label>Check-in Visita</Label><Input type="date" value={visita.checkin} onChange={e => handleVisitaChange(vIndex, 'checkin', e.target.value)} /></div>
+                                                    <div><Label>Check-out Visita</Label><Input type="date" value={visita.checkout} onChange={e => handleVisitaChange(vIndex, 'checkout', e.target.value)} /></div>
+                                                    <div><Label>Patente Vehículo</Label><Input value={visita.patente} onChange={e => handleVisitaChange(vIndex, 'patente', e.target.value.toUpperCase())} placeholder="AABB-11"/></div>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-8 w-8 ml-2 mt-4" onClick={() => handleEliminarVisita(vIndex)}>
+                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </Button>
+                                            </div>
+                                            <div className="pl-2 border-l-2 ml-2 space-y-1">
+                                                <div className="flex justify-between items-center">
+                                                    <Label>Integrantes de la Visita</Label>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleAgregarVisitaIntegrante(vIndex)}>+ Persona</Button>
+                                                </div>
+                                                {(visita.integrantes || []).map((p, iIndex) => (
+                                                    <div key={iIndex} className="grid grid-cols-12 gap-2 items-start">
+                                                        <div className="col-span-4"><Input placeholder="RUT (Opcional)" value={p.rut} onChange={e => handleVisitaIntegranteChange(vIndex, iIndex, "rut", e.target.value)} />{errors[`visita_${vIndex}_int_rut_${iIndex}`] && <p className="text-xs text-red-500 mt-1">{errors[`visita_${vIndex}_int_rut_${iIndex}`]}</p>}</div>
+                                                        <div className="col-span-5"><Input placeholder="Nombre Visita" value={p.nombre} onChange={e => handleVisitaIntegranteChange(vIndex, iIndex, "nombre", e.target.value)} />{errors[`visita_${vIndex}_int_nombre_${iIndex}`] && <p className="text-xs text-red-500 mt-1">{errors[`visita_${vIndex}_int_nombre_${iIndex}`]}</p>}</div>
+                                                        <div className="col-span-2"><Input type="number" placeholder="Edad" value={p.edad} onChange={e => handleVisitaIntegranteChange(vIndex, iIndex, "edad", parseInt(e.target.value || "0", 10))} /></div>
+                                                        <div className="col-span-1 flex items-center justify-center"><Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-8 w-8" onClick={() => { const updatedVisitas = [...form.visitas]; updatedVisitas[vIndex].integrantes.splice(iIndex, 1); setForm({ ...form, visitas: updatedVisitas }); }}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 6L6 18M6 6l12 12" /></svg></Button></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                        <Card>
+                            <CardHeader className="flex justify-between items-center">
+                                <CardTitle>Detalle de Pago</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={onOpenDescuento}>
+                                        <IconMinus className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setForm({ ...form, pagos: [...(form.pagos || []), { id: uuid(), metodo: "efectivo", monto: 0, fecha: dateToYMD(new Date()) }] })}>+ Agregar Pago</Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">{(form.pagos || []).length > 0 && (<div className="grid grid-cols-12 gap-2 px-1 items-center"><div className="col-span-6"><Label className="text-xs text-neutral-500">Método de Pago</Label></div><div className="col-span-5"><Label className="text-xs text-neutral-500">Monto</Label></div><div className="col-span-1"></div></div>)}{(form.pagos || []).map((p, i) => ( <div key={p.id} className="grid grid-cols-12 gap-2 items-start"><div className="col-span-6"><Select value={p.metodo} onValueChange={(v) => handlePagoChange(i, "metodo", v)}>{METODOS_PAGO.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</Select></div><div className="col-span-5"><Input type="number" placeholder="0" value={p.monto} onChange={(e) => handlePagoChange(i, "monto", parseInt(e.target.value || "0", 10))} /></div><div className="col-span-1 flex items-center justify-center"><Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-9 w-9" onClick={() => { const arr = (form.pagos || []).filter((_, idx) => idx !== i); setForm({ ...form, pagos: arr }); }}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></Button></div></div> ))}{(!form.pagos || form.pagos.length === 0) && <p className="text-xs text-center opacity-70 py-2">Sin pagos registrados.</p>}</div>
+                                {errors.pagos && <p className="text-sm text-red-500 mt-2 text-center font-semibold">{errors.pagos}</p>}
+                                <div className="mt-2 pt-2 border-t flex justify-end gap-6 text-right">
+                                    <div><Label>Total Pagado</Label><p className="font-semibold">${totalPagado.toLocaleString("es-CL")}</p></div>
+                                    <div><Label>Saldo Pendiente</Label><p className="font-semibold text-lg text-red-600">${saldoPendiente.toLocaleString("es-CL")}</p></div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    <div className="flex justify-between items-center p-4 border-t">
+                         <div className="text-xs text-right">
+                            <p>Estadía: ${totalEstadia.toLocaleString("es-CL")}</p>
+                            <p>Adicional Visitas: ${totalVisitas.toLocaleString("es-CL")}</p>
+                            {totalDescuento > 0 && <p className="text-red-600">Descuento: -${totalDescuento.toLocaleString("es-CL")}</p>}
+                            <p className="font-bold text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
+                        </div>
+                        <div className="flex gap-2">{form.id && <Button variant="destructive" onClick={() => liberarSitio(form.id)}>Liberar Sitio</Button>}<Button onClick={guardarReserva} disabled={Object.keys(errors).length > 0}>Guardar Ficha</Button></div>
+                    </div>
+                </DialogContent>
+            </Dialog> 
+        ); };
+        
+        function MantenedorTarifas({ isOpen, setIsOpen, config, setConfig, sitios, setSitios, sitiosList, setSitiosList, reservas }) { 
+            const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]; 
+            const [newSite, setNewSite] = useState('');
+            const [deleteSiteConfirm, setDeleteSiteConfirm] = useState(null);
+
+            const handleMonthChange = (monthIndex, newTemporada) => { const newConfig = JSON.parse(JSON.stringify(config)); newConfig.mesesTemporada.alta = newConfig.mesesTemporada.alta.filter(m => m !== monthIndex); newConfig.mesesTemporada.media = newConfig.mesesTemporada.media.filter(m => m !== monthIndex); newConfig.mesesTemporada.baja = newConfig.mesesTemporada.baja.filter(m => m !== monthIndex); newConfig.mesesTemporada[newTemporada].push(monthIndex); setConfig(newConfig); }; 
+            const handlePriceChange = (temporada, tipo, value) => { setConfig({...config, precios: {...config.precios, [temporada]: {...config.precios[temporada], [tipo]: parseInt(value) || 0}}}); }; 
+            const handleAdicionalChange = (temporada, value) => { setConfig({...config, adicionalPorPersona: {...config.adicionalPorPersona, [temporada]: parseInt(value) || 0}}); }; 
+            const handlePiscinaChange = (temporada, value) => { setConfig({...config, precioPiscina: {...config.precioPiscina, [temporada]: parseInt(value) || 0}}); }; 
+            const handleTipoSitioChange = (sitioNum, tipo) => { setSitios({...sitios, [sitioNum]: tipo}); }; 
+
+            const handleAddSite = () => {
+                if (newSite && !sitiosList.includes(newSite)) {
+                    const newList = [...sitiosList, newSite].sort((a, b) => {
+                        const numA = parseInt(a.match(/\d+/)[0]);
+                        const numB = parseInt(b.match(/\d+/)[0]);
+                        if (numA !== numB) return numA - numB;
+                        return a.localeCompare(b);
+                    });
+                    setSitiosList(newList);
+                    setSitios({...sitios, [newSite]: 'normal'});
+                    setNewSite('');
+                }
+            };
+
+            const handleRemoveSite = (sitioToRemove) => {
+                const siteHasBookings = reservas.some(r => r.sitio === sitioToRemove);
+                if (siteHasBookings) {
+                    alert("No se puede eliminar un sitio con reservas asociadas.");
+                    return;
+                }
+                setDeleteSiteConfirm(sitioToRemove);
+            };
+
+            const confirmRemoveSite = () => {
+                const newList = sitiosList.filter(s => s !== deleteSiteConfirm);
+                setSitiosList(newList);
+                const newTipos = {...sitios};
+                delete newTipos[deleteSiteConfirm];
+                setSitios(newTipos);
+                setDeleteSiteConfirm(null);
+            };
+
+            return ( 
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                    <DialogCloseButton onClick={() => setIsOpen(false)} />
+                    <DialogHeader>
+                        <DialogTitle>Configuración</DialogTitle>
+                        <DialogDescription>Gestiona las tarifas, temporadas y sitios del camping.</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                        <Tabs defaultValue="tarifas">
+                            <TabsList className="grid w-full grid-cols-3">
+                                <TabsTrigger value="tarifas">Tarifas y Temporadas</TabsTrigger>
+                                <TabsTrigger value="tipos-sitio">Asignación de Tipos</TabsTrigger>
+                                <TabsTrigger value="gestion-sitios">Gestionar Sitios</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="tarifas" className="pt-4">
+                                <Card><CardHeader><CardTitle>1. Definición de Temporadas</CardTitle></CardHeader><CardContent className="grid grid-cols-4 gap-4">{(['alta', 'media', 'baja']).map(temporada => ( <div key={temporada} className="border rounded-lg p-3"><h4 className="font-semibold mb-2 capitalize">Temporada {temporada}</h4><div className="grid grid-cols-2 gap-2">{MESES.map((mes, index) => (<div key={mes} className="flex items-center"><input type="checkbox" id={`${temporada}-${index}`} checked={config.mesesTemporada[temporada].includes(index)} onChange={() => handleMonthChange(index, temporada)} className="h-4 w-4" /><label htmlFor={`${temporada}-${index}`} className="ml-2 text-sm">{mes}</label></div>))}</div></div> ))}<div className="border rounded-lg p-3 bg-neutral-50 dark:bg-neutral-900"><h4 className="font-semibold mb-2">Generales</h4><div className="space-y-2"><div><Label className="text-xs">Máx. Personas Base (Sitios)</Label><Input type="number" value={config.maxPersonasBase} onChange={e => setConfig({...config, maxPersonasBase: parseInt(e.target.value) || 0})} /></div><div><Label className="text-xs">Hora de Medio Día (Sitios)</Label><Input type="number" min="0" max="23" value={config.horaMedioDia} onChange={e => setConfig({...config, horaMedioDia: parseInt(e.target.value) || 0})} /></div></div></div></CardContent></Card>
+                                <Card className="mt-4"><CardHeader><CardTitle>2. Precios por Temporada y Tipo de Servicio</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 md:grid-cols-3 gap-4">{(['alta', 'media', 'baja']).map(temporada => (<div key={temporada} className="p-4 border rounded-lg"><h4 className="font-semibold capitalize text-lg mb-3">Temporada {temporada}</h4><div className="space-y-4"><div><h5 className="text-sm font-medium mb-2">Valor Diario del Sitio</h5><div className="space-y-2"><div><Label className="text-xs">Orilla de Lago</Label><Input type="number" value={config.precios[temporada].orilla} onChange={e => handlePriceChange(temporada, 'orilla', e.target.value)} /></div><div><Label className="text-xs">Normal</Label><Input type="number" value={config.precios[temporada].normal} onChange={e => handlePriceChange(temporada, 'normal', e.target.value)} /></div><div><Label className="text-xs">Especial</Label><Input type="number" value={config.precios[temporada].especial} onChange={e => handlePriceChange(temporada, 'especial', e.target.value)} /></div></div></div><div><h5 className="text-sm font-medium mb-2">Costos Adicionales</h5><div className="space-y-2"><div><Label className="text-xs">Por Persona Extra / Día (Sitios)</Label><Input type="number" value={config.adicionalPorPersona[temporada]} onChange={e => handleAdicionalChange(temporada, e.target.value)} /></div><div><Label className="text-xs">Precio Piscina / Persona</Label><Input type="number" value={config.precioPiscina[temporada]} onChange={e => handlePiscinaChange(temporada, e.target.value)} /></div></div></div></div></div>))}</div></CardContent></Card>
+                            </TabsContent>
+                            <TabsContent value="tipos-sitio"><Card><CardHeader><CardTitle>Asignación de Tipo por Sitio</CardTitle></CardHeader><CardContent className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4">{sitiosList.map(sitioNum => (<div key={sitioNum}><Label>Sitio #{sitioNum}</Label><Select value={sitios[sitioNum] || 'normal'} onValueChange={(v) => handleTipoSitioChange(sitioNum, v)}><SelectItem value="normal">Normal</SelectItem><SelectItem value="orilla">Orilla Lago</SelectItem><SelectItem value="especial">Especial</SelectItem></Select></div>))} </CardContent></Card></TabsContent>
+                            <TabsContent value="gestion-sitios">
+                                <Card>
+                                    <CardHeader><CardTitle>Añadir Nuevo Sitio</CardTitle></CardHeader>
+                                    <CardContent className="flex items-end gap-2">
+                                        <div className="flex-grow"><Label>Nombre del Sitio (ej: 35a)</Label><Input value={newSite} onChange={e => setNewSite(e.target.value)} /></div>
+                                        <Button onClick={handleAddSite}>Agregar</Button>
+                                    </CardContent>
+                                </Card>
+                                <Card className="mt-4">
+                                    <CardHeader><CardTitle>Lista de Sitios Actuales</CardTitle></CardHeader>
+                                    <CardContent className="max-h-64 overflow-y-auto">
+                                        {sitiosList.map(sitio => (
+                                            <div key={sitio} className="flex justify-between items-center p-2 border-b">
+                                                <span>Sitio #{sitio}</span>
+                                                <Button variant="destructive" size="sm" onClick={() => handleRemoveSite(sitio)}>Eliminar</Button>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
+                    </div>
+                    <div className="flex justify-end p-6 border-t -mb-6 -mx-6"><Button onClick={() => setIsOpen(false)}>Cerrar</Button></div>
+                    
+                    <Dialog open={!!deleteSiteConfirm} onOpenChange={() => setDeleteSiteConfirm(null)}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Confirmar Eliminación</DialogTitle>
+                                <DialogDescription>¿Estás seguro de que quieres eliminar el sitio #{deleteSiteConfirm}? Esta acción no se puede deshacer.</DialogDescription>
+                            </DialogHeader>
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button variant="outline" onClick={() => setDeleteSiteConfirm(null)}>Cancelar</Button>
+                                <Button variant="destructive" onClick={confirmRemoveSite}>Sí, Eliminar</Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </DialogContent>
+            </Dialog> 
+            );
+        }
+        function FichaPiscinaDialog({isOpen, setIsOpen, tarifasConfig, onSave, form, setForm, onOpenDescuento, onOpenPatentes}) {
+            const [errors, setErrors] = useState({});
+            const temporadaActual = useMemo(() => getTemporada(new Date(), tarifasConfig), [tarifasConfig]);
+            const precioPorPersona = tarifasConfig.precioPiscina[temporadaActual];
+
+            const { subtotal, totalDescuento, totalGeneral } = useMemo(() => {
+                const subtotalCalc = (1 + (form.integrantes || []).length) * precioPorPersona;
+                let descuentoCalc = 0;
+                if (form.descuentoValor > 0) {
+                    if (form.descuentoTipo === 'porcentaje') {
+                        descuentoCalc = Math.round(subtotalCalc * (form.descuentoValor / 100));
+                    } else {
+                        descuentoCalc = form.descuentoValor;
+                    }
+                }
+                const totalGeneralCalc = Math.max(0, subtotalCalc - descuentoCalc);
+                return { subtotal: subtotalCalc, totalDescuento: descuentoCalc, totalGeneral: totalGeneralCalc };
+            }, [form.integrantes, form.descuentoTipo, form.descuentoValor, precioPorPersona]);
+
+            useEffect(() => {
+                setForm(f => ({ ...f, totalCLP: totalGeneral }));
+            }, [totalGeneral]);
+
+            useEffect(() => {
+                const newErrors = {};
+                if (!form.nombre) newErrors.nombre = "Nombre requerido";
+                if (!validarRUT(form.rut)) newErrors.rut = "RUT inválido";
+                (form.integrantes || []).forEach((p, i) => {
+                    if (!p.nombre) newErrors[`int_nombre_${i}`] = `Nombre requerido`;
+                    if (p.rut && !validarRUT(p.rut)) newErrors[`int_rut_${i}`] = "RUT inválido";
+                });
+                const totalPagadoCheck = (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
+                if (totalGeneral !== totalPagadoCheck) {
+                   newErrors.pagos = "El total pagado debe ser igual al total a pagar.";
+                }
+                setErrors(newErrors);
+            }, [form, totalGeneral]);
+
+            const handleIntegranteChange = (index, field, value) => {
+                const nuevosIntegrantes = [...(form.integrantes || [])];
+                nuevosIntegrantes[index] = { ...nuevosIntegrantes[index], [field]: value };
+                setForm({ ...form, integrantes: nuevosIntegrantes });
+            };
+            
+            const handlePatenteChange = (index, value) => {
+                const newPatentes = [...(form.patentes || [""])];
+                newPatentes[index] = value.toUpperCase();
+                setForm({ ...form, patentes: newPatentes });
+            };
+
+            const handlePagoChange = (index, field, value) => {
+                const nuevosPagos = JSON.parse(JSON.stringify(form.pagos || []));
+                nuevosPagos[index][field] = value;
+                setForm({ ...form, pagos: nuevosPagos });
+            };
+
+            const totalPagado = useMemo(() => (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0), [form.pagos]);
+            const saldoPendiente = totalGeneral - totalPagado;
+            const METODOS_PAGO = [{ value: 'efectivo', label: 'Efectivo' }, { value: 'debito', label: 'Débito' }, { value: 'credito', label: 'Crédito' }, { value: 'transferencia', label: 'Transferencia' }];
+
+            const handleSave = () => {
+                if (Object.keys(errors).length > 0) {
+                    return;
+                }
+                const newEntry = { ...form, id: uuid(), createdAt: dateToYMD(new Date()) };
+                onSave(newEntry);
+                setForm(DEFAULT_PISCINA_FORM_STATE);
+                setIsOpen(false);
+            };
+
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <DialogHeader className="p-6 border-b">
+                            <DialogTitle>Registro de Ingreso a Piscina (Día)</DialogTitle>
+                            <DialogDescription>Precio por persona hoy ({temporadaActual}): ${precioPorPersona.toLocaleString('es-CL')}</DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                             <Card>
+                                <CardHeader><CardTitle>Datos del Titular</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                     <div className="grid grid-cols-12 gap-4 items-start">
+                                        <div className="col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={e => setForm({...form, rut: e.target.value})} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
+                                        <div className="col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={e => setForm({...form, nombre: e.target.value})} />{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
+                                        <div className="col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular || ''} onChange={e => setForm({...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
+                                        <div className="col-span-2"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={e => setForm({...form, telefono: e.target.value})} /></div>
+                                        <div className="col-span-2"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={e => setForm({...form, email: e.target.value})} /></div>
+                                        <div className="col-span-2 flex items-end gap-1">
+                                            <div className="flex-grow">
+                                                <Label>Patente Principal</Label>
+                                                <Input value={(form.patentes && form.patentes[0]) || ''} onChange={(e) => handlePatenteChange(0, e.target.value)} />
+                                            </div>
+                                            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={onOpenPatentes} disabled={!form.rut || !form.nombre || !(form.patentes && form.patentes[0])} title={(!form.rut || !form.nombre || !(form.patentes && form.patentes[0])) ? "Debe ingresar RUT, Nombre y Patente Principal primero" : "Gestionar patentes adicionales"}>
+                                                <IconPlus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex justify-between items-center">
+                                    <CardTitle>Acompañantes</CardTitle>
+                                    <Button variant="outline" size="sm" onClick={() => setForm({ ...form, integrantes: [...(form.integrantes || []), { rut: "", nombre: "", edad: 0 }] })}>+ Agregar Persona</Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {(form.integrantes || []).length > 0 && (
+                                            <div className="grid grid-cols-12 gap-2 px-1 items-center">
+                                                <div className="col-span-4"><Label className="text-xs text-neutral-500">RUT (Opcional)</Label></div>
+                                                <div className="col-span-5"><Label className="text-xs text-neutral-500">Nombre</Label></div>
+                                                <div className="col-span-2"><Label className="text-xs text-neutral-500">Edad</Label></div>
+                                                <div className="col-span-1"></div>
+                                            </div>
+                                        )}
+                                        {(form.integrantes || []).map((p, i) => (
+                                            <div key={i} className="grid grid-cols-12 gap-2 items-start">
+                                                <div className="col-span-4"><Input placeholder="12.345.678-K" value={p.rut} onChange={(e) => handleIntegranteChange(i, "rut", e.target.value)} />{errors[`int_rut_${i}`] && <p className="text-xs text-red-500 mt-1">{errors[`int_rut_${i}`]}</p>}</div>
+                                                <div className="col-span-5"><Input placeholder="Nombre del Acompañante" value={p.nombre} onChange={(e) => handleIntegranteChange(i, "nombre", e.target.value)} />{errors[`int_nombre_${i}`] && <p className="text-xs text-red-500 mt-1">{errors[`int_nombre_${i}`]}</p>}</div>
+                                                <div className="col-span-2"><Input type="number" placeholder="0" value={p.edad} onChange={(e) => handleIntegranteChange(i, "edad", parseInt(e.target.value || "0", 10))} /></div>
+                                                <div className="col-span-1 flex items-center justify-center"><Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-9 w-9" onClick={() => { const arr = (form.integrantes || []).filter((_, idx) => idx !== i); setForm({ ...form, integrantes: arr }); }}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></Button></div>
+                                            </div>
+                                        ))}
+                                        {(!form.integrantes || form.integrantes.length === 0) && <p className="text-xs text-center opacity-70 py-4">Sin acompañantes agregados.</p>}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex justify-between items-center"><CardTitle>Detalle de Pago</CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setIsDescuentoOpen(true)}>
+                                            <IconMinus className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => setForm({ ...form, pagos: [...(form.pagos || []), { id: uuid(), metodo: "efectivo", monto: 0, fecha: dateToYMD(new Date()) }] })}>+ Agregar Pago</Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2 mt-4">{(form.pagos || []).map((p, i) => ( <div key={p.id} className="grid grid-cols-12 gap-2 items-start"><div className="col-span-6"><Select value={p.metodo} onValueChange={(v) => handlePagoChange(i, "metodo", v)}>{METODOS_PAGO.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</Select></div><div className="col-span-5"><Input type="number" placeholder="0" value={p.monto} onChange={(e) => handlePagoChange(i, "monto", parseInt(e.target.value || "0", 10))} /></div><div className="col-span-1 flex items-center justify-center"><Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 h-9 w-9" onClick={() => { const arr = (form.pagos || []).filter((_, idx) => idx !== i); setForm({ ...form, pagos: arr }); }}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></Button></div></div> ))}{(!form.pagos || form.pagos.length === 0) && <p className="text-xs text-center opacity-70 py-4">Sin pagos registrados.</p>}</div>
+                                    {errors.pagos && <p className="text-sm text-red-500 mt-2 text-center font-semibold">{errors.pagos}</p>}
+                                    <div className="mt-4 pt-4 border-t flex justify-end gap-6 text-right">
+                                        <div><Label className="text-xs">Total Pagado</Label><p className="font-semibold">${totalPagado.toLocaleString("es-CL")}</p></div>
+                                        <div><Label className="text-xs">Saldo Pendiente</Label><p className="font-semibold text-lg text-red-600">${saldoPendiente.toLocaleString("es-CL")}</p></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="flex justify-between items-center p-6 border-t">
+                             <div className="text-xs text-right">
+                                <p>Subtotal: ${subtotal.toLocaleString("es-CL")}</p>
+                                {totalDescuento > 0 && <p className="text-red-600">Descuento: -${totalDescuento.toLocaleString("es-CL")}</p>}
+                                <p className="font-bold text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
+                            </div>
+                            <Button onClick={handleSave} disabled={Object.keys(errors).length > 0}>Guardar Ingreso</Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            );
+        }
+        function ReportesMenu({ isOpen, setIsOpen, setReporte }) { const handleSelect = (reporte) => { setReporte(reporte); setIsOpen(false); }; return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Seleccionar Reporte</DialogTitle><DialogDescription>Elige el reporte que deseas generar.</DialogDescription></DialogHeader><div className="grid gap-3 pt-4"><Button variant="outline" onClick={() => handleSelect('caja')}>Cuadratura de Caja Diaria</Button><Button variant="outline" onClick={() => handleSelect('ocupacion')}>Ocupación Actual</Button></div></DialogContent></Dialog> ); }
+        function ReporteCaja({ isOpen, setIsOpen, reservas, ingresosPiscina, gastos }) { 
+            const [selectedDate, setSelectedDate] = useState(dateToYMD(new Date())); 
+            const reportData = useMemo(() => { 
+                const pagosDelDia = []; 
+                reservas.forEach(reserva => { (reserva.pagos || []).forEach(pago => { if (pago.fecha === selectedDate) { pagosDelDia.push({ origen: `Sitio #${reserva.sitio}`, nombre: reserva.nombre, monto: pago.monto, metodo: pago.metodo, }); } }); }); 
+                ingresosPiscina.forEach(ingreso => { (ingreso.pagos || []).forEach(pago => { if (pago.fecha === selectedDate) { pagosDelDia.push({ origen: 'Piscina', nombre: ingreso.nombre, monto: pago.monto, metodo: pago.metodo }); } }); }); 
+                const gastosDelDia = gastos.filter(g => g.fecha === selectedDate);
+                const totalGastos = gastosDelDia.reduce((sum, gasto) => sum + gasto.monto, 0);
+                const totalIngresos = pagosDelDia.reduce((sum, pago) => sum + pago.monto, 0); 
+                const desglose = pagosDelDia.reduce((acc, pago) => { acc[pago.metodo] = (acc[pago.metodo] || 0) + pago.monto; return acc; }, {}); 
+                const checkinsDelDia = reservas.filter(r => r.checkin === selectedDate).length; 
+                return { pagos: pagosDelDia, totalIngresos, desglose, checkins: checkinsDelDia, numPagos: pagosDelDia.length, gastos: gastosDelDia, totalGastos }; 
+            }, [selectedDate, reservas, ingresosPiscina, gastos]); 
+            return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl h-[90vh] flex flex-col"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Reporte: Cuadratura de Caja</DialogTitle><DialogDescription>Selecciona una fecha para generar el reporte.</DialogDescription></DialogHeader><div className="flex items-center gap-4 no-print"><Label htmlFor="report-date">Fecha del Reporte</Label><Input id="report-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-48" /><Button onClick={() => window.print()} className="ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Cuadratura de Caja Diaria</h2><p className="text-lg font-semibold">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Ingreso Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-emerald-600">${reportData.totalIngresos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Gasto Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-red-600">${reportData.totalGastos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nº de Pagos Recibidos</CardTitle><CardDescription className="text-2xl font-bold">{reportData.numPagos}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nuevos Check-Ins (Sitios)</CardTitle><CardDescription className="text-2xl font-bold">{reportData.checkins}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Ingresos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Origen</th><th className="p-2 text-left">Titular</th><th className="p-2 text-left capitalize">Método</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.pagos.map((p, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">{p.origen}</td><td className="p-2">{p.nombre}</td><td className="p-2 capitalize">{p.metodo}</td><td className="p-2 text-right">${p.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.pagos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron pagos en esta fecha.</td></tr>)}</tbody></table></div></div>
+                                <div><h3 className="font-semibold mb-2">Detalle de Gastos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Detalle</th><th className="p-2 text-left">Observaciones</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.gastos.map((g, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2 capitalize">{g.type}</td><td className="p-2 text-xs">{g.type === 'compra' ? `Doc: ${g.doc} - RUT: ${g.rut}` : `Nombre: ${g.nombre} - Días: ${g.dias} - Función: ${g.funcion}`}</td><td className="p-2 text-xs">{g.observaciones}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.gastos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron gastos en esta fecha.</td></tr>)}</tbody></table></div></div>
+                                <div><h3 className="font-semibold mb-2">Desglose por Forma de Pago</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Efectivo</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.efectivo || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Débito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.debito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Crédito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.credito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Transferencia</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.transferencia || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card></div></div></div></div></DialogContent></Dialog> );}
+        function ReporteOcupacion({ isOpen, setIsOpen, reservas }) { const reportData = useMemo(() => { const today = dateToYMD(new Date()); const ocupadosHoy = reservas.filter(r => r.checkin <= today && r.checkout >= today && r.estado === 'ocupado'); const totalPersonasHoy = ocupadosHoy.reduce((sum, r) => sum + (r.adultos || 0) + (r.ninos || 0), 0); return { ocupados: ocupadosHoy, totalSitios: ocupadosHoy.length, totalPersonas: totalPersonasHoy }; }, [reservas]); return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl h-[90vh] flex flex-col"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Reporte: Ocupación Actual</DialogTitle><DialogDescription>Muestra todos los sitios actualmente ocupados.</DialogDescription></DialogHeader><div className="flex items-center gap-4 no-print"><Button onClick={() => window.print()} className="ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 mt-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Reporte de Ocupación Actual</h2><p className="text-lg font-semibold">{new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card><CardHeader className="p-4"><CardTitle>Total Sitios Ocupados</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalSitios}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Total Personas en Camping</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalPersonas}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Sitios Ocupados</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Sitio</th><th className="p-2 text-left">Titular</th><th className="p-2 text-right">Total Personas</th></tr></thead><tbody>{reportData.ocupados.map((r, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">#{r.sitio}</td><td className="p-2">{r.nombre}</td><td className="p-2 text-right">{r.adultos + r.ninos}</td></tr>))}{reportData.ocupados.length === 0 && (<tr><td colSpan="3" className="p-4 text-center text-neutral-500">No hay sitios ocupados actualmente.</td></tr>)}</tbody></table></div></div></div></div></DialogContent></Dialog> ); }
+        function ImportExportDialog({ isOpen, setIsOpen, reservas, setReservas, tarifasConfig, setTarifasConfig, tiposDeSitio, setSitios, ingresosPiscina, setIngresosPiscina }) { const [text, setText] = useState(""); const [err, setErr] = useState(null); const handleExport = () => { const dataToExport = JSON.stringify({ reservas, tarifasConfig, tiposDeSitio, ingresosPiscina }, null, 2); setText(dataToExport); }; const handleImport = () => { try { setErr(null); const data = JSON.parse(text); if (typeof data !== 'object' || data === null) throw new Error("El JSON debe ser un objeto válido."); if (data.reservas) setReservas(data.reservas); if (data.tarifasConfig) setTarifasConfig(data.tarifasConfig); if (data.tiposDeSitio) setTiposDeSitio(data.tiposDeSitio); if(data.ingresosPiscina) setIngresosPiscina(data.ingresosPiscina); setIsOpen(false); } catch (e) { setErr(e.message); } }; return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Exportar / Importar Datos</DialogTitle></DialogHeader><Tabs defaultValue="exportar"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="exportar">Exportar</TabsTrigger><TabsTrigger value="importar">Importar</TabsTrigger></TabsList><TabsContent value="exportar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" readOnly value={text} placeholder="Haz clic en 'Preparar Exportación' para generar los datos."/><Button onClick={handleExport}>Preparar Exportación</Button></TabsContent><TabsContent value="importar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" value={text} onChange={(e) => setText(e.target.value)} placeholder="Pega aquí el JSON exportado."/><Button onClick={handleImport}>Cargar y Reemplazar Datos</Button>{err && <p className="text-sm text-red-600\">{err}</p>}</TabsContent></Tabs></DialogContent></Dialog> );}
+
+        function IngresoGastosDialog({ isOpen, setIsOpen, gastos, onSave }) {
+            const [selectedDate, setSelectedDate] = useState(dateToYMD(new Date()));
+            const [gastosDelDia, setGastosDelDia] = useState([]);
+            const [nuevoGastoCompra, setNuevoGastoCompra] = useState({ doc: '', rut: '', monto: 0, observaciones: '' });
+            const [nuevoGastoPago, setNuevoGastoPago] = useState({ rut: '', nombre: '', dias: 0, monto: 0, funcion: '' });
+
+            useEffect(() => {
+                if (isOpen) {
+                    setGastosDelDia(gastos.filter(g => g.fecha === selectedDate));
+                }
+            }, [isOpen, selectedDate, gastos]);
+
+            const handleAddGasto = (tipo) => {
+                if (tipo === 'compra') {
+                    if(nuevoGastoCompra.monto <= 0) return;
+                    setGastosDelDia([...gastosDelDia, { id: uuid(), type: 'compra', fecha: selectedDate, ...nuevoGastoCompra }]);
+                    setNuevoGastoCompra({ doc: '', rut: '', monto: 0, observaciones: '' });
+                } else {
+                    if(nuevoGastoPago.monto <= 0) return;
+                    setGastosDelDia([...gastosDelDia, { id: uuid(), type: 'pago', fecha: selectedDate, ...nuevoGastoPago }]);
+                    setNuevoGastoPago({ rut: '', nombre: '', dias: 0, monto: 0, funcion: '' });
+                }
+            };
+            
+            const handleSave = () => {
+                onSave(selectedDate, gastosDelDia);
+                setIsOpen(false);
+            };
+
+            const totalGastosCompra = gastosDelDia.filter(g => g.type === 'compra').reduce((sum, g) => sum + g.monto, 0);
+            const totalGastosPago = gastosDelDia.filter(g => g.type === 'pago').reduce((sum, g) => sum + g.monto, 0);
+
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent className="max-w-6xl">
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <DialogHeader>
+                            <DialogTitle>Ingreso de Gastos Diarios</DialogTitle>
+                            <div className="flex items-center gap-2 pt-2">
+                                <Label htmlFor="gasto-date">Mostrando gastos para la fecha:</Label>
+                                <Input id="gasto-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-48" />
+                            </div>
+                        </DialogHeader>
+                        <Tabs defaultValue="compra">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="compra">Compra</TabsTrigger>
+                                <TabsTrigger value="pago">Pago Días Trabajados</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="compra">
+                                <div className="grid grid-cols-4 gap-2 items-end mt-4">
+                                    <div><Label>Nº Documento</Label><Input value={nuevoGastoCompra.doc} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, doc: e.target.value})} /></div>
+                                    <div><Label>RUT Proveedor</Label><Input value={nuevoGastoCompra.rut} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, rut: e.target.value})}/></div>
+                                    <div className="col-span-2"><Label>Monto</Label><Input type="number" value={nuevoGastoCompra.monto} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, monto: parseInt(e.target.value || '0')})} /></div>
+                                    <div className="col-span-4"><Label>Observaciones</Label><textarea value={nuevoGastoCompra.observaciones} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, observaciones: e.target.value})} className="flex w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm" /></div>
+                                    <div className="col-span-4"><Button className="w-full" onClick={() => handleAddGasto('compra')}>Agregar Gasto de Compra</Button></div>
+                                </div>
+                                <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
+                                   <table className="w-full text-sm">
+                                      <thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Nº Doc</th><th className="p-2 text-left">RUT</th><th className="p-2 text-left">Observaciones</th><th className="p-2 text-right">Monto</th></tr></thead>
+                                      <tbody>{gastosDelDia.filter(g => g.type === 'compra').map(g => <tr key={g.id}><td className="p-2">{g.doc}</td><td className="p-2">{g.rut}</td><td className="p-2">{g.observaciones}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>)}</tbody>
+                                   </table>
+                                </div>
+                                <p className="text-right font-bold mt-2">Total Compras: ${totalGastosCompra.toLocaleString('es-CL')}</p>
+                            </TabsContent>
+                            <TabsContent value="pago">
+                                 <div className="grid grid-cols-5 gap-2 items-end mt-4">
+                                    <div><Label>RUT</Label><Input value={nuevoGastoPago.rut} onChange={e => setNuevoGastoPago({...nuevoGastoPago, rut: e.target.value})} /></div>
+                                    <div><Label>Nombre</Label><Input value={nuevoGastoPago.nombre} onChange={e => setNuevoGastoPago({...nuevoGastoPago, nombre: e.target.value})}/></div>
+                                    <div><Label>Días</Label><Input type="number" value={nuevoGastoPago.dias} onChange={e => setNuevoGastoPago({...nuevoGastoPago, dias: parseInt(e.target.value || '0')})} /></div>
+                                    <div><Label>Función</Label><Input value={nuevoGastoPago.funcion} onChange={e => setNuevoGastoPago({...nuevoGastoPago, funcion: e.target.value})} /></div>
+                                    <div><Label>Monto Total</Label><Input type="number" value={nuevoGastoPago.monto} onChange={e => setNuevoGastoPago({...nuevoGastoPago, monto: parseInt(e.target.value || '0')})} /></div>
+                                    <div className="col-span-5"><Button className="w-full" onClick={() => handleAddGasto('pago')}>Agregar Pago</Button></div>
+                                </div>
+                                <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
+                                   <table className="w-full text-sm">
+                                      <thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Nombre</th><th className="p-2 text-left">Función</th><th className="p-2 text-right">Monto</th></tr></thead>
+                                      <tbody>{gastosDelDia.filter(g => g.type === 'pago').map(g => <tr key={g.id}><td className="p-2">{g.nombre}</td><td className="p-2">{g.funcion}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>)}</tbody>
+                                   </table>
+                                </div>
+                                <p className="text-right font-bold mt-2">Total Pagos: ${totalGastosPago.toLocaleString('es-CL')}</p>
+                            </TabsContent>
+                        </Tabs>
+                        <div className="flex justify-end pt-4">
+                            <Button onClick={handleSave}>Guardar Cambios para el Día Seleccionado</Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            );
+        }
+        
+        function DescuentoDialog({ isOpen, setIsOpen, form, setForm }) {
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent>
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <DialogHeader>
+                            <DialogTitle>Aplicar Descuento</DialogTitle>
+                            <DialogDescription>
+                                Selecciona el tipo y valor del descuento a aplicar sobre el subtotal.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="pt-4 space-y-4">
+                            <div className="flex items-end gap-4">
+                                <div className="w-1/3">
+                                    <Label>Tipo</Label>
+                                    <Select
+                                        value={form.descuentoTipo || 'monto'}
+                                        onValueChange={(value) => setForm({ ...form, descuentoTipo: value, descuentoValor: 0 })}
+                                    >
+                                        <SelectItem value="monto">$ Monto Fijo</SelectItem>
+                                        <SelectItem value="porcentaje">% Porcentaje</SelectItem>
+                                    </Select>
+                                </div>
+                                <div className="flex-grow">
+                                    <Label>Valor del Descuento</Label>
+                                    <Input
+                                        type="number"
+                                        value={form.descuentoValor || 0}
+                                        onChange={(e) => {
+                                            let value = parseInt(e.target.value || "0", 10);
+                                            if (form.descuentoTipo === 'porcentaje' && value > 100) value = 100;
+                                            if (value < 0) value = 0;
+                                            setForm({ ...form, descuentoValor: value });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                               <Button onClick={() => setIsOpen(false)}>Aplicar</Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            );
+        }
+        
+        function PatentesDialog({ isOpen, setIsOpen, form, setForm }) {
+            const handlePatenteChange = (index, value) => {
+                const newPatentes = [...(form.patentes || [""])];
+                newPatentes[index] = value.toUpperCase();
+                setForm({ ...form, patentes: newPatentes });
+            };
+
+            const handleAddPatente = () => {
+                setForm({ ...form, patentes: [...(form.patentes || [""]), ""] });
+            };
+
+            const handleRemovePatente = (index) => {
+                if ((form.patentes || []).length <= 1 && index === 0) return;
+                const newPatentes = form.patentes.filter((_, i) => i !== index);
+                setForm({ ...form, patentes: newPatentes });
+            };
+            
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent>
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <DialogHeader>
+                            <DialogTitle>Gestionar Patentes Adicionales</DialogTitle>
+                        </DialogHeader>
+                        <div className="pt-4 space-y-2 max-h-64 overflow-y-auto">
+                             {(form.patentes || [""]).slice(1).map((patente, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                    <Input 
+                                        value={patente} 
+                                        onChange={(e) => handlePatenteChange(index + 1, e.target.value)} 
+                                        placeholder={`Patente Adicional ${index + 1}`} 
+                                        className="uppercase"
+                                    />
+                                    <Button variant="destructive" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemovePatente(index + 1)}>
+                                        <IconX className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                             { (form.patentes || []).length <= 1 && <p className="text-sm text-center text-neutral-500">No hay patentes adicionales.</p>}
+                        </div>
+                         <div className="flex justify-between items-center pt-4">
+                           <Button variant="outline" size="sm" onClick={handleAddPatente}>+ Agregar Patente</Button>
+                           <Button onClick={() => setIsOpen(false)}>Cerrar</Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )
+        }
+        
+        function MapaDialog({ isOpen, setIsOpen }) {
+            // Este es el enlace DIRECTO a tu imagen, extraído de la página de iBB. ¡Este funcionará!
+            const MAP_IMAGE_URL = "https://i.ibb.co/gDFv4xM/camping-2.jpg";
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent className="max-w-4xl p-2">
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <img src={MAP_IMAGE_URL} alt="Mapa del Camping" className="w-full h-auto rounded-md" />
+                    </DialogContent>
+                </Dialog>
+            );
+        }
+
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 6. COMPONENTE PRINCIPAL DE LA APLICACIÓN: CampingNauticoRapelApp
+        // Este componente orquesta todos los demás componentes y maneja el estado global.
+        // —————————————————————————————————————————————————————————————————————————————————
+        
+        function CampingNauticoRapelApp() {
+            // ESTADO: Almacena todos los datos dinámicos de la aplicación.
+            const [dark, setDark] = useState(false);
+            const [reservas, setReservas] = usePersistentState("camping-nautico-reservas-v12", []);
+            const [ingresosPiscina, setIngresosPiscina] = usePersistentState("camping-piscina-v2", []);
+            const [gastos, setGastos] = usePersistentState("camping-gastos-v1", []);
+            const [tarifasConfig, setTarifasConfig] = usePersistentState("camping-tarifas-config-v3", DEFAULT_TARIFAS_CONFIG);
+            const [sitiosList, setSitiosList] = usePersistentState("camping-sitios-list-v1", DEFAULT_SITIOS_LIST);
+            const [tiposDeSitio, setTiposDeSitio] = usePersistentState("camping-tipos-sitio-v2", () => generateDefaultTiposDeSitio(DEFAULT_SITIOS_LIST));
+            const [form, setForm] = useState(DEFAULT_FORM_STATE);
+            const [piscinaForm, setPiscinaForm] = useState(DEFAULT_PISCINA_FORM_STATE);
+            const [errors, setErrors] = useState({});
+            
+            // ESTADO DE UI: Controla la visibilidad de diálogos y modales.
+            const [sheetOpen, setSheetOpen] = useState(false);
+            const [sitioActual, setSitioActual] = useState(null);
+            const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+            const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const [reporteAMostrar, setReporteAMostrar] = useState(null);
+            const [isReportesMenuOpen, setIsReportesMenuOpen] = useState(false);
+            const [isPiscinaOpen, setIsPiscinaOpen] = useState(false);
+            const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+            const [isGastosOpen, setIsGastosOpen] = useState(false);
+            const [isDescuentoOpen, setIsDescuentoOpen] = useState(false);
+            const [isPatentesOpen, setIsPatentesOpen] = useState(false);
+            const [isMapaOpen, setIsMapaOpen] = useState(false);
+            const [reservasDelSitio, setReservasDelSitio] = useState([]);
+            const [filtroEstado, setFiltroEstado] = useState("todos");
+            const [formTypeForDialogs, setFormTypeForDialogs] = useState('sitio');
+
+
+            // DATOS MEMOIZADOS: Cálculos que se realizan solo cuando sus dependencias cambian, para optimizar el rendimiento.
+            
+            // Calcula el estado actual de cada sitio (libre, ocupado, etc.).
+            const estadoPorSitio = useMemo(() => {
+                const today = dateToYMD(new Date());
+                const siteStates = {};
+
+                sitiosList.forEach(sitioNum => {
+                    const bookingsForSite = reservas.filter(r => r.sitio === sitioNum);
+                    const currentBooking = bookingsForSite.find(r => r.checkin <= today && r.checkout >= today && r.estado !== 'mantenimiento');
+                    const isMaintenance = bookingsForSite.some(r => r.estado === 'mantenimiento' && r.checkin <= today && r.checkout >= today);
+                    
+                    if (isMaintenance) {
+                        siteStates[sitioNum] = { estado: 'mantenimiento' };
+                    } else if (currentBooking) {
+                        siteStates[sitioNum] = { estado: currentBooking.estado };
+                    } else {
+                         siteStates[sitioNum] = { estado: 'libre' };
+                    }
+                });
+                return siteStates;
+            }, [reservas, sitiosList]);
+            
+            // Calcula el resumen general para la barra lateral.
+            const resumen = useMemo(() => {
+                const today = dateToYMD(new Date());
+                const ocupados = Object.values(estadoPorSitio).filter(s => s.estado === 'ocupado').length;
+                const reservados = Object.values(estadoPorSitio).filter(s => s.estado === 'reservado').length;
+                const mant = Object.values(estadoPorSitio).filter(s => s.estado === 'mantenimiento').length;
+                const libres = sitiosList.length - (ocupados + reservados + mant);
+                
+                const ingresoEstimadoSitios = reservas
+                    .reduce((sum, r) => sum + (r.totalCLP || 0), 0);
+                
+                const ingresoEstimadoPiscina = ingresosPiscina
+                    .reduce((sum, p) => sum + (p.totalCLP || 0), 0);
+
+                const ingresoEstimado = ingresoEstimadoSitios + ingresoEstimadoPiscina;
+                
+                const piscinaHoy = ingresosPiscina.filter(p => p.createdAt === today).reduce((sum, p) => sum + 1 + (p.integrantes || []).length, 0);
+                
+                const personasEnSitiosHoy = reservas
+                    .filter(r => r.estado === 'ocupado' && r.checkin <= today && r.checkout >= today)
+                    .reduce((sum, r) => {
+                        const visitantesHoy = (r.visitas || []).filter(v => v.checkin <= today && v.checkout >= today)
+                                                          .reduce((s, v) => s + (v.integrantes || []).length, 0);
+                        return sum + (r.adultos || 0) + (r.ninos || 0) + visitantesHoy;
+                    }, 0);
+
+                const personasHoy = personasEnSitiosHoy + piscinaHoy;
+
+                return { libres, reservados, ocupados, mant, ingresoEstimado, piscinaHoy, personasHoy };
+            }, [estadoPorSitio, reservas, ingresosPiscina, sitiosList]);
+
+            const sitiosFiltrados = useMemo(() => {
+                if (filtroEstado === 'todos') return sitiosList;
+                return sitiosList.filter(n => (estadoPorSitio[n]?.estado || 'libre') === filtroEstado);
+            }, [filtroEstado, estadoPorSitio, sitiosList]);
+
+            // EFECTOS SECUNDARIOS: Lógica que se ejecuta en respuesta a cambios en el estado.
+            useEffect(() => { document.documentElement.classList.toggle('dark', dark) }, [dark]);
+            
+            // Efecto que actualiza automáticamente la cantidad de adultos y niños si se modifica la lista de acompañantes.
+            useEffect(() => { 
+                if (form.estado === 'ocupado') { 
+                    const EDAD_ADULTO = 18; 
+                    const adultosAcompanantes = (form.integrantes || []).filter(p => p.edad >= EDAD_ADULTO).length; 
+                    const ninosAcompanantes = (form.integrantes || []).filter(p => p.edad < EDAD_ADULTO && p.edad >= 0).length; 
+                    if (form.adultos !== 1 + adultosAcompanantes || form.ninos !== ninosAcompanantes) { 
+                        setForm(prevForm => ({ ...prevForm, adultos: 1 + adultosAcompanantes, ninos: ninosAcompanantes })); 
+                    } 
+                } 
+            }, [form.integrantes, form.estado]);
+            
+            useEffect(() => {
+                const newErrors = {};
+                if (!form.rut || !validarRUT(form.rut)) newErrors.rut = "RUT del titular es inválido.";
+                if (!form.nombre) newErrors.nombre = "El nombre del titular es requerido.";
+                if (!form.edadTitular || form.edadTitular < 18) newErrors.edadTitular = "El titular debe ser mayor de edad (18+).";
+                if (form.estado !== 'mantenimiento' && (diasEstadia(form.checkin, form.checkout) <= 0)) { newErrors.checkout = "La fecha de salida debe ser igual o posterior a la de entrada."; }
+                
+                if (form.estado === 'ocupado') {
+                    const { totalGeneral } = calcularCostos(form, tarifasConfig, tiposDeSitio);
+                    const totalPagado = (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
+                    if (totalGeneral !== totalPagado) {
+                        newErrors.pagos = "El total pagado debe ser igual al total a pagar para un ingreso.";
+                    }
+                }
+                
+                if (form.estado === 'ocupado') { 
+                    form.integrantes?.forEach((p, i) => { if (p.rut && !validarRUT(p.rut)) newErrors[`int_rut_${i}`] = `RUT inválido`; if (!p.nombre) newErrors[`int_nombre_${i}`] = `Nombre requerido`; if (p.edad < 0) newErrors[`int_edad_${i}`] = `Edad inválida`; });
+                    form.visitas?.forEach((v, vIndex) => {
+                        v.integrantes?.forEach((p, iIndex) => {
+                             if (p.rut && !validarRUT(p.rut)) newErrors[`visita_${vIndex}_int_rut_${iIndex}`] = `RUT inválido`; 
+                             if (!p.nombre) newErrors[`visita_${vIndex}_int_nombre_${iIndex}`] = `Nombre requerido`;
+                        });
+                    });
+                }
+                const bookingsForSite = reservas.filter(r => r.sitio === form.sitio);
+                if(checkDateConflict(form, bookingsForSite)) { newErrors.dateConflict = "Conflicto de fechas. El sitio ya está ocupado en este período."}
+                
+                setErrors(newErrors);
+            }, [form, reservas, tarifasConfig, tiposDeSitio]);
+
+
+            // MANEJADORES DE EVENTOS: Funciones que responden a las interacciones del usuario.
+            function handleSitioClick(n) {
+                setSitioActual(n);
+                const today = dateToYMD(new Date());
+                const siteBookings = reservas
+                    .filter(r => r.sitio === n && r.checkout >= today)
+                    .sort((a,b) => a.checkin.localeCompare(b.checkin));
+                setReservasDelSitio(siteBookings);
+                setIsActionModalOpen(true);
+            }
+            
+            function handleOpenSheet(mode, initialState) { 
+                if (mode === 'edit') { 
+                    setForm(initialState); 
+                } else { 
+                    setForm({ ...DEFAULT_FORM_STATE, ...initialState, sitio: sitioActual }); 
+                } 
+                setIsActionModalOpen(false); 
+                setSheetOpen(true); 
+            }
+
+            function handleSetMaintenance() {
+                if (!sitioActual) return;
+                const maintenanceReservation = { id: uuid(), createdAt: new Date().toISOString(), sitio: sitioActual, estado: 'mantenimiento', nombre: "Mantenimiento", checkin: "1970-01-01", checkout: "9999-12-31", checkinTime: "00:00", rut: "", edadTitular: 0, adultos: 0, ninos: 0, vehiculos: 0, totalCLP: 0, integrantes: [], pagos: [], visitas: [] };
+                setReservas(prev => [...prev, maintenanceReservation]);
+                setIsActionModalOpen(false);
+            }
+            
+            function handleEnableSite() {
+                if (!sitioActual) return;
+                const updatedReservas = reservas.filter(r => !(r.sitio === sitioActual && r.estado === 'mantenimiento'));
+                setReservas(updatedReservas);
+                setIsActionModalOpen(false);
+            }
+
+
+            function checkDateConflict(newBooking, allBookings) {
+                const newStart = new Date(newBooking.checkin).getTime();
+                const newEnd = new Date(newBooking.checkout).getTime();
+                for (const existingBooking of allBookings) {
+                    if (newBooking.id && newBooking.id === existingBooking.id) continue;
+                    
+                    const existingStart = new Date(existingBooking.checkin).getTime();
+                    const existingEnd = new Date(existingBooking.checkout).getTime();
+
+                    if (Math.max(newStart, existingStart) <= Math.min(newEnd, existingEnd)) {
+                        if (existingBooking.estado === 'mantenimiento' && newBooking.estado !== 'mantenimiento') return true;
+                        if (newBooking.estado === 'mantenimiento' && existingBooking.estado !== 'mantenimiento') return true;
+                        if (newBooking.estado !== 'mantenimiento' && existingBooking.estado !== 'mantenimiento') return true;
+                    }
+                }
+                return false;
+            }
+            
+            function guardarReserva() {
+                if (Object.keys(errors).length > 0) {
+                    console.log("No se puede guardar, hay errores en el formulario:", errors);
+                    return;
+                }
+                const { totalGeneral } = calcularCostos(form, tarifasConfig, tiposDeSitio);
+                if (form.id) {
+                    const updatedReserva = { ...form, totalCLP: totalGeneral };
+                    setReservas(prev => prev.map(r => r.id === form.id ? updatedReserva : r));
+                } else {
+                    const nuevaReserva = { id: uuid(), createdAt: new Date().toISOString(), ...form, totalCLP: totalGeneral };
+                    setReservas(prev => [...prev, nuevaReserva]);
+                }
+                setSheetOpen(false);
+            }
+            
+            function liberarSitio(reservaId) { if (!reservaId) return; setReservas((prev) => prev.filter((r) => r.id !== reservaId)); setSheetOpen(false); }
+            function handleIntegranteChange(index, field, value) { const nuevosIntegrantes = [...(form.integrantes || [])]; nuevosIntegrantes[index] = { ...nuevosIntegrantes[index], [field]: value }; setForm({ ...form, integrantes: nuevosIntegrantes }); }
+            function handlePagoChange(index, field, value) { const nuevosPagos = JSON.parse(JSON.stringify(form.pagos || [])); nuevosPagos[index][field] = value; setForm({ ...form, pagos: nuevosPagos }); }
+            
+            const handlePatenteChange = (index, value, type) => {
+                const currentForm = type === 'piscina' ? piscinaForm : form;
+                const setCurrentForm = type === 'piscina' ? setPiscinaForm : setForm;
+
+                const newPatentes = [...(currentForm.patentes || [""])];
+                newPatentes[index] = value.toUpperCase();
+                setCurrentForm({ ...currentForm, patentes: newPatentes });
+            };
+
+            const handleAddPatente = (type) => {
+                const currentForm = type === 'piscina' ? piscinaForm : form;
+                const setCurrentForm = type === 'piscina' ? setPiscinaForm : setForm;
+                setCurrentForm({ ...currentForm, patentes: [...(currentForm.patentes || [""]), ""] });
+            };
+
+            const handleRemovePatente = (index, type) => {
+                const currentForm = type === 'piscina' ? piscinaForm : form;
+                const setCurrentForm = type === 'piscina' ? setPiscinaForm : setForm;
+
+                if ((currentForm.patentes || []).length <= 1 && index === 0) return;
+                const newPatentes = currentForm.patentes.filter((_, i) => i !== index);
+                setCurrentForm({ ...currentForm, patentes: newPatentes.length > 0 ? newPatentes : [""] });
+            };
+            
+            // Handlers para visitas
+            const handleAgregarVisita = () => { const newVisita = { id: uuid(), checkin: '', checkout: '', patente: '', integrantes: [{ rut: '', nombre: '', edad: 0 }] }; setForm(f => ({...f, visitas: [...(f.visitas || []), newVisita]})); };
+            const handleEliminarVisita = (vIndex) => { setForm(f => ({...f, visitas: f.visitas.filter((_, i) => i !== vIndex)})); };
+            const handleVisitaChange = (vIndex, field, value) => { const updatedVisitas = [...form.visitas]; updatedVisitas[vIndex][field] = value; setForm({...form, visitas: updatedVisitas}); };
+            const handleAgregarVisitaIntegrante = (vIndex) => { const updatedVisitas = [...form.visitas]; updatedVisitas[vIndex].integrantes.push({ rut: '', nombre: '', edad: 0 }); setForm({...form, visitas: updatedVisitas}); };
+            const handleVisitaIntegranteChange = (vIndex, iIndex, field, value) => { const updatedVisitas = [...form.visitas]; updatedVisitas[vIndex].integrantes[iIndex][field] = value; setForm({...form, visitas: updatedVisitas}); };
+            
+            // Handlers para gastos
+            const handleSaveGastos = (selectedDate, nuevosGastosDelDia) => {
+                const otrosGastos = gastos.filter(g => g.fecha !== selectedDate);
+                setGastos([...otrosGastos, ...nuevosGastosDelDia]);
+                setIsGastosOpen(false);
+            };
+
+            const actionButtonClasses = "bg-white border border-neutral-900 text-neutral-900 hover:bg-neutral-100 dark:bg-transparent dark:border-neutral-200 dark:text-neutral-50 dark:hover:bg-neutral-800";
+
+            // RENDERIZADO DEL COMPONENTE: Devuelve el JSX que se mostrará en pantalla.
+            return (
+                <div>
+                    <div className="min-h-screen flex bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50">
+                        <Sidebar
+                            resumen={resumen}
+                            filtroEstado={filtroEstado}
+                            setFiltroEstado={setFiltroEstado}
+                            isDark={dark}
+                            onSetDark={() => setDark(d => !d)}
+                            onOpenReportes={() => setIsReportesMenuOpen(true)}
+                            onOpenSettings={() => setIsSettingsOpen(true)}
+                            onOpenImportExport={() => setIsImportExportOpen(true)}
+                            onOpenGastos={() => setIsGastosOpen(true)}
+                            onOpenMapa={() => setIsMapaOpen(true)}
+                        />
+                        <main className="flex-1 p-4 overflow-auto flex flex-col">
+                            <div>
+                                <div className="flex items-center gap-2 mb-3 no-print">
+                                    <IconMap className="h-5 w-5"/>
+                                    <h2 className="text-lg font-semibold">Mapa de Sitios</h2>
+                                    <Badge variant="outline" className="ml-auto">Modo Local</Badge>
+                                </div>
+                                <SiteGrid 
+                                    sitios={sitiosFiltrados}
+                                    onSitioClick={handleSitioClick}
+                                    estadoPorSitio={estadoPorSitio}
+                                    tiposDeSitio={tiposDeSitio}
+                                />
+                            </div>
+                            <div className="mt-6 border-t pt-4 no-print">
+                               <Button onClick={() => { setPiscinaForm(DEFAULT_PISCINA_FORM_STATE); setIsPiscinaOpen(true); }} className="w-full md:w-auto"><IconUsers className="h-4 w-4 mr-2" /> Registrar Ingreso a Piscina</Button>
+                            </div>
+                        </main>
+                    </div>
+                    
+                    <Dialog open={isActionModalOpen} onOpenChange={setIsActionModalOpen}>
+                        <DialogContent>
+                            <DialogCloseButton onClick={() => setIsActionModalOpen(false)} />
+                            <DialogHeader>
+                                <DialogTitle>Acciones para el Sitio #{sitioActual}</DialogTitle>
+                                <DialogDescription>El sitio es de tipo <b className="capitalize">{tiposDeSitio[sitioActual] || 'normal'}</b>. Selecciona una acción.</DialogDescription>
+                            </DialogHeader>
+                            <div className="pt-4 space-y-4">
+                                {(() => {
+                                    const isOccupiedToday = estadoPorSitio[sitioActual]?.estado === 'ocupado';
+                                    return (
+                                        <>
+                                            <div>
+                                                <Button className={`w-full ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'ocupado', checkin: dateToYMD(new Date()) })} disabled={isOccupiedToday}>Crear Ficha de Ingreso (Hoy)</Button>
+                                                <Button className={`w-full mt-2 ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'reservado' })}>Crear Nueva Reserva</Button>
+                                            </div>
+                                            
+                                            {reservasDelSitio.length > 0 && 
+                                                <div className="space-y-2">
+                                                    <h4 className="text-sm font-medium">Reservas Existentes:</h4>
+                                                    <div className="border rounded-md max-h-48 overflow-y-auto">
+                                                        {reservasDelSitio.map(r => (
+                                                            <div key={r.id} className="p-2 border-b text-sm flex justify-between items-center">
+                                                                <div>
+                                                                    <p className="font-semibold">{r.nombre} ({r.estado})</p>
+                                                                    <p className="text-xs opacity-70">{r.estado === 'mantenimiento' ? 'Indefinido' : `${r.checkin} al ${r.checkout}`}</p>
+                                                                </div>
+                                                                <Button size="sm" variant="ghost" onClick={() => handleOpenSheet('edit', r)}>Editar</Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            }
+                                            
+                                            <Button className={`w-full mt-4 ${actionButtonClasses}`} onClick={() => { setIsActionModalOpen(false); setIsDisableConfirmOpen(true); }}>Poner en Mantenimiento</Button>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog open={isDisableConfirmOpen} onOpenChange={setIsDisableConfirmOpen}><DialogContent>
+                        <DialogCloseButton onClick={() => setIsDisableConfirmOpen(false)} />
+                        <DialogHeader><DialogTitle>Confirmar Acción</DialogTitle><DialogDescription>¿Estás seguro de que quieres poner el Sitio #{sitioActual} en mantenimiento? Esto bloqueará cualquier reserva nueva.</DialogDescription></DialogHeader><div className="flex justify-end gap-2 pt-4"><Button variant="outline" onClick={() => setIsDisableConfirmOpen(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { handleSetMaintenance(); setIsDisableConfirmOpen(false); }}>Confirmar</Button></div></DialogContent></Dialog>
+                    
+                    <IngresoGastosDialog isOpen={isGastosOpen} setIsOpen={setIsGastosOpen} gastos={gastos} onSave={handleSaveGastos} />
+                    <FichaPiscinaDialog isOpen={isPiscinaOpen} setIsOpen={setIsPiscinaOpen} tarifasConfig={tarifasConfig} onSave={(nuevoIngreso) => setIngresosPiscina(prev => [...prev, nuevoIngreso])} form={piscinaForm} setForm={setPiscinaForm} onOpenDescuento={() => { setFormTypeForDialogs('piscina'); setIsDescuentoOpen(true); }} onOpenPatentes={() => { setFormTypeForDialogs('piscina'); setIsPatentesOpen(true); }} />
+                    <ReportesMenu isOpen={isReportesMenuOpen} setIsOpen={setIsReportesMenuOpen} setReporte={setReporteAMostrar}/>
+                    <ReporteCaja isOpen={reporteAMostrar === 'caja'} setIsOpen={() => setReporteAMostrar(null)} reservas={reservas} ingresosPiscina={ingresosPiscina} gastos={gastos} />
+                    <ReporteOcupacion isOpen={reporteAMostrar === 'ocupacion'} setIsOpen={() => setReporteAMostrar(null)} reservas={reservas}/>
+                    <MapaDialog isOpen={isMapaOpen} setIsOpen={setIsMapaOpen} />
+                    
+                    <MantenedorTarifas isOpen={isSettingsOpen} setIsOpen={setIsSettingsOpen} config={tarifasConfig} setConfig={setTarifasConfig} sitios={tiposDeSitio} setSitios={setTiposDeSitio} sitiosList={sitiosList} setSitiosList={setSitiosList} reservas={reservas} />
+                    <FichaDeIngresoDialog open={sheetOpen} onOpenChange={setSheetOpen} form={form} setForm={setForm} errors={errors} guardarReserva={guardarReserva} liberarSitio={liberarSitio} tiposDeSitio={tiposDeSitio} tarifasConfig={tarifasConfig} handleIntegranteChange={handleIntegranteChange} handlePagoChange={handlePagoChange} handleVisitaChange={handleVisitaChange} handleVisitaIntegranteChange={handleVisitaIntegranteChange} handleAgregarVisita={handleAgregarVisita} handleEliminarVisita={handleEliminarVisita} handleAgregarVisitaIntegrante={handleAgregarVisitaIntegrante} onOpenDescuento={() => { setFormTypeForDialogs('sitio'); setIsDescuentoOpen(true); }} onOpenPatentes={() => { setFormTypeForDialogs('sitio'); setIsPatentesOpen(true); }} handlePatenteChange={(index, value) => handlePatenteChange(index, value, 'sitio')} />
+                    <DescuentoDialog isOpen={isDescuentoOpen} setIsOpen={setIsDescuentoOpen} form={formTypeForDialogs === 'sitio' ? form : piscinaForm} setForm={formTypeForDialogs === 'sitio' ? setForm : setPiscinaForm} />
+                    <PatentesDialog isOpen={isPatentesOpen} setIsOpen={setIsPatentesOpen} form={formTypeForDialogs === 'sitio' ? form : piscinaForm} setForm={formTypeForDialogs === 'sitio' ? setForm : setPiscinaForm} />
+                    <ImportExportDialog isOpen={isImportExportOpen} setIsOpen={setIsImportExportOpen} reservas={reservas} setReservas={setReservas} tarifasConfig={tarifasConfig} setTarifasConfig={setTarifasConfig} tiposDeSitio={tiposDeSitio} setSitios={setSitiosList} ingresosPiscina={ingresosPiscina} setIngresosPiscina={setIngresosPiscina} />
+                </div>
+            );
+        }
+        
+        // —————————————————————————————————————————————————————————————————————————————————
+        // 7. PUNTO DE ENTRADA DE LA APLICACIÓN
+        // Aquí es donde React toma el control y renderiza el componente principal en el DOM.
+        // —————————————————————————————————————————————————————————————————————————————————
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render( <StrictMode> <CampingNauticoRapelApp /> </StrictMode> );
+
+    </script>
+</body>
+</html>
