@@ -82,6 +82,45 @@
         const DEFAULT_PISCINA_FORM_STATE = { id: '', tipo: 'piscina', nombre: '', rut: '', edadTitular: 18, telefono: '', email: '', patentes: [""], integrantes: [], pagos: [], totalCLP: 0, createdAt: '', descuentoTipo: 'monto', descuentoValor: 0 };
 
         // —————————————————————————————————————————————————————————————————————————————————
+        // SISTEMA DE AUTENTICACIÓN
+        // —————————————————————————————————————————————————————————————————————————————————
+        
+        const USUARIOS = {
+            'admin': { password: 'admin123', rol: 'admin', nombre: 'Administrador' },
+            'recepcion': { password: 'recep123', rol: 'recepcionista', nombre: 'Recepcionista' },
+            'finanzas': { password: 'fin123', rol: 'finanzas', nombre: 'Finanzas' },
+            'invitado': { password: 'invitado123', rol: 'solo_lectura', nombre: 'Invitado' }
+        };
+
+        const ROLES = {
+            admin: 'Admin',
+            recepcionista: 'Recepcionista',
+            finanzas: 'Finanzas',
+            solo_lectura: 'Solo lectura'
+        };
+
+        // Funciones de autenticación
+        function autenticarUsuario(username, password) {
+            const usuario = USUARIOS[username];
+            if (usuario && usuario.password === password) {
+                return { username, rol: usuario.rol, nombre: usuario.nombre };
+            }
+            return null;
+        }
+
+        function tienePermiso(rol, accion) {
+            if (rol === 'admin') return true;
+            
+            const permisos = {
+                recepcionista: ['ver_mapa', 'registrar_ingresos', 'check_in_out', 'ver_resumen'],
+                finanzas: ['ver_mapa', 'ver_reportes', 'exportar_datos', 'ingresar_gastos', 'ver_resumen'],
+                solo_lectura: ['ver_mapa']
+            };
+            
+            return permisos[rol]?.includes(accion) || false;
+        }
+
+        // —————————————————————————————————————————————————————————————————————————————————
         // 2. FUNCIONES DE AYUDA (HELPERS)
         // —————————————————————————————————————————————————————————————————————————————————
 
@@ -199,7 +238,10 @@
         const Dialog = ({ open, onOpenChange, children }) => {
             if (!open) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 animate-in p-4">
+                <div 
+                    className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 animate-in p-4"
+                    onClick={() => onOpenChange && onOpenChange(false)}
+                >
                     <div className="relative" onClick={e => e.stopPropagation()}>{children}</div>
                 </div>
             );
@@ -257,6 +299,9 @@
         const IconShoppingCart = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>);
         const IconMinus = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>);
         const IconPlus = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+        const IconLogIn = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>);
+        const IconLogOut = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>);
+        const IconUser = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
 
 
         const DialogCloseButton = ({ onClick }) => (
@@ -270,7 +315,105 @@
         // 5. COMPONENTES ESPECÍFICOS DE LA APLICACIÓN
         // —————————————————————————————————————————————————————————————————————————————————
 
-        const Sidebar = ({ resumen, filtroEstado, setFiltroEstado, onSetDark, isDark, onOpenReportes, onOpenSettings, onOpenImportExport, onOpenGastos, onOpenMapa }) => {
+        const LoginScreen = ({ onLogin }) => {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setError('');
+                const usuario = autenticarUsuario(username, password);
+                if (usuario) {
+                    onLogin(usuario);
+                } else {
+                    setError('Usuario o contraseña incorrectos');
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
+                    <Card className="w-full max-w-md">
+                        <CardHeader className="text-center">
+                            <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                                <IconUser className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <CardTitle className="text-2xl">Camping Náutico Rapel</CardTitle>
+                            <CardDescription>Inicia sesión para continuar</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <Label htmlFor="username">Usuario</Label>
+                                    <Input
+                                        id="username"
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        placeholder="Ingresa tu usuario"
+                                        className="mt-1"
+                                        autoComplete="username"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="password">Contraseña</Label>
+                                    <div className="relative mt-1">
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder="Ingresa tu contraseña"
+                                            className="pr-10"
+                                            autoComplete="current-password"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                                        >
+                                            {showPassword ? (
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                                {error && (
+                                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                                        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                                    </div>
+                                )}
+                                <Button type="submit" className="w-full">
+                                    <IconLogIn className="h-4 w-4 mr-2" />
+                                    Iniciar Sesión
+                                </Button>
+                            </form>
+                            <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                                <p className="text-xs text-center text-neutral-500 dark:text-neutral-400 mb-2">Usuarios de ejemplo:</p>
+                                <div className="text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
+                                    <div><strong>admin</strong> / admin123 (Admin)</div>
+                                    <div><strong>recepcion</strong> / recep123 (Recepcionista)</div>
+                                    <div><strong>finanzas</strong> / fin123 (Finanzas)</div>
+                                    <div><strong>invitado</strong> / invitado123 (Solo lectura)</div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        };
+
+        const Sidebar = ({ resumen, filtroEstado, setFiltroEstado, onSetDark, isDark, onOpenReportes, onOpenSettings, onOpenImportExport, onOpenGastos, onOpenMapa, usuario, onLogout, tienePermiso }) => {
             const Estado = ({ label, value }) => { 
                 const colorClass = { 
                     'Libres': 'text-emerald-500', 
@@ -288,34 +431,64 @@
                         <h1 className="text-xl font-semibold">Camping Náutico Rapel</h1>
                         <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema">{isDark ? <IconSun className="h-4 w-4"/> : <IconMoon className="h-4 w-4"/>}</Button>
                     </div>
-                    <Card>
-                        <CardHeader className="pb-2"><CardTitle>Estado general</CardTitle></CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2">
-                            <Estado label="Libres" value={resumen.libres}/>
-                            <Estado label="Reservados" value={resumen.reservados}/>
-                            <Estado label="Ocupados" value={resumen.ocupados}/>
-                            <Estado label="Mant." value={resumen.mant}/>
-                            <Estado label="Piscina Hoy" value={resumen.piscinaHoy} />
-                            <Estado label="Personas Hoy" value={resumen.personasHoy} />
-                            <div className="col-span-2 text-sm mt-2"><b>Ingreso estimado: </b>${resumen.ingresoEstimado.toLocaleString("es-CL")}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-2"><CardTitle>Filtrar sitios</CardTitle></CardHeader>
-                        <CardContent>
-                            <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-                                <SelectItem value="todos">Todos</SelectItem><SelectItem value="libre">Libres</SelectItem>
-                                <SelectItem value="reservado">Reservados</SelectItem><SelectItem value="ocupado">Ocupados</SelectItem>
-                                <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
-                            </Select>
-                        </CardContent>
-                    </Card>
+                    {usuario && (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                                        <IconUser className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold truncate">{usuario.nombre}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{ROLES[usuario.rol]}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                    {tienePermiso(usuario?.rol, 'ver_resumen') && (
+                        <Card>
+                            <CardHeader className="pb-2"><CardTitle>Estado general</CardTitle></CardHeader>
+                            <CardContent className="grid grid-cols-2 gap-2">
+                                <Estado label="Libres" value={resumen.libres}/>
+                                <Estado label="Reservados" value={resumen.reservados}/>
+                                <Estado label="Ocupados" value={resumen.ocupados}/>
+                                <Estado label="Mant." value={resumen.mant}/>
+                                <Estado label="Piscina Hoy" value={resumen.piscinaHoy} />
+                                <Estado label="Personas Hoy" value={resumen.personasHoy} />
+                                <div className="col-span-2 text-sm mt-2"><b>Ingreso estimado: </b>${resumen.ingresoEstimado.toLocaleString("es-CL")}</div>
+                            </CardContent>
+                        </Card>
+                    )}
+                    {tienePermiso(usuario?.rol, 'ver_resumen') && (
+                        <Card>
+                            <CardHeader className="pb-2"><CardTitle>Filtrar sitios</CardTitle></CardHeader>
+                            <CardContent>
+                                <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                                    <SelectItem value="todos">Todos</SelectItem><SelectItem value="libre">Libres</SelectItem>
+                                    <SelectItem value="reservado">Reservados</SelectItem><SelectItem value="ocupado">Ocupados</SelectItem>
+                                    <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+                                </Select>
+                            </CardContent>
+                        </Card>
+                    )}
                     <div className="mt-auto flex flex-col gap-2">
-                        <Button className="w-full" variant="outline" onClick={onOpenMapa}><IconMap className="h-4 w-4 mr-2"/> Ver Mapa del Camping</Button>
-                        <Button className="w-full" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-4 w-4 mr-2"/> Ingreso de Gastos</Button>
-                        <Button className="w-full" variant="outline" onClick={onOpenReportes}><IconFileText className="h-4 w-4 mr-2"/> Reportes</Button>
-                        <Button className="w-full" variant="outline" onClick={onOpenSettings}><IconSettings className="h-4 w-4 mr-2"/> Configuración de Tarifas</Button>
-                        <Button className="w-full" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-4 w-4 mr-2"/> Exportar / Importar</Button>
+                        {tienePermiso(usuario?.rol, 'ver_mapa') && (
+                            <Button className="w-full" variant="outline" onClick={onOpenMapa}><IconMap className="h-4 w-4 mr-2"/> Ver Mapa del Camping</Button>
+                        )}
+                        {tienePermiso(usuario?.rol, 'ingresar_gastos') && (
+                            <Button className="w-full" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-4 w-4 mr-2"/> Ingreso de Gastos</Button>
+                        )}
+                        {tienePermiso(usuario?.rol, 'ver_reportes') && (
+                            <Button className="w-full" variant="outline" onClick={onOpenReportes}><IconFileText className="h-4 w-4 mr-2"/> Reportes</Button>
+                        )}
+                        {tienePermiso(usuario?.rol, 'configurar_tarifas') && (
+                            <Button className="w-full" variant="outline" onClick={onOpenSettings}><IconSettings className="h-4 w-4 mr-2"/> Configuración de Tarifas</Button>
+                        )}
+                        {tienePermiso(usuario?.rol, 'exportar_datos') && (
+                            <Button className="w-full" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-4 w-4 mr-2"/> Exportar / Importar</Button>
+                        )}
+                        <Button className="w-full" variant="destructive" onClick={onLogout}><IconLogOut className="h-4 w-4 mr-2"/> Cerrar Sesión</Button>
                     </div>
                 </aside>
             );
@@ -952,15 +1125,41 @@
         }
         
         function MapaDialog({ isOpen, setIsOpen }) {
-            // Este es el enlace DIRECTO a tu imagen, extraído de la página de iBB. ¡Este funcionará!
-            const MAP_IMAGE_URL = "https://i.ibb.co/gDFv4xM/camping-2.jpg";
+            const MAP_IMAGE_URL = "images/imagen1.png";
+            if (!isOpen) return null;
             return (
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogContent className="max-w-4xl p-2">
-                        <DialogCloseButton onClick={() => setIsOpen(false)} />
-                        <img src={MAP_IMAGE_URL} alt="Mapa del Camping" className="w-full h-auto rounded-md" />
-                    </DialogContent>
-                </Dialog>
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-in p-2"
+                    onClick={() => setIsOpen(false)}
+                >
+                    <div 
+                        className="relative z-50 w-[95vw] h-[95vh] max-w-[95vw] max-h-[95vh] bg-neutral-50 dark:bg-neutral-950 border rounded-lg shadow-lg flex flex-col overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={() => setIsOpen(false)} 
+                            className="absolute top-4 right-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-white dark:bg-neutral-800 p-2 shadow-lg"
+                        >
+                            <IconX className="h-5 w-5" />
+                            <span className="sr-only">Cerrar</span>
+                        </button>
+                        <div className="p-4 border-b">
+                            <h2 className="text-xl font-semibold leading-none tracking-tight">Mapa del Camping</h2>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Vista general de la distribución de los sitios</p>
+                        </div>
+                        <div className="flex-1 flex justify-center items-center overflow-auto p-4">
+                            <img 
+                                src={MAP_IMAGE_URL} 
+                                alt="Mapa del Camping" 
+                                className="max-w-full max-h-full w-auto h-auto object-contain rounded-md border border-neutral-200 dark:border-neutral-800 shadow-lg"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23f3f4f6" width="400" height="300"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="18" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImagen no disponible%3C/text%3E%3C/svg%3E';
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
             );
         }
 
@@ -971,6 +1170,7 @@
         
         function CampingNauticoRapelApp() {
             // ESTADO: Almacena todos los datos dinámicos de la aplicación.
+            const [usuario, setUsuario] = useState(null);
             const [dark, setDark] = useState(false);
             const [reservas, setReservas] = usePersistentState("camping-nautico-reservas-v12", []);
             const [ingresosPiscina, setIngresosPiscina] = usePersistentState("camping-piscina-v2", []);
@@ -1108,6 +1308,10 @@
 
             // MANEJADORES DE EVENTOS: Funciones que responden a las interacciones del usuario.
             function handleSitioClick(n) {
+                // Solo permitir click si el usuario tiene permiso de ver mapa o registrar ingresos
+                if (!tienePermiso(usuario?.rol, 'ver_mapa') && !tienePermiso(usuario?.rol, 'registrar_ingresos')) {
+                    return;
+                }
                 setSitioActual(n);
                 const today = dateToYMD(new Date());
                 const siteBookings = reservas
@@ -1220,6 +1424,20 @@
 
             const actionButtonClasses = "bg-white border border-neutral-900 text-neutral-900 hover:bg-neutral-100 dark:bg-transparent dark:border-neutral-200 dark:text-neutral-50 dark:hover:bg-neutral-800";
 
+            // Funciones de autenticación
+            const handleLogin = (usuarioData) => {
+                setUsuario(usuarioData);
+            };
+
+            const handleLogout = () => {
+                setUsuario(null);
+            };
+
+            // Si no hay usuario autenticado, mostrar pantalla de login
+            if (!usuario) {
+                return <LoginScreen onLogin={handleLogin} />;
+            }
+
             // RENDERIZADO DEL COMPONENTE: Devuelve el JSX que se mostrará en pantalla.
             return (
                 <div>
@@ -1235,13 +1453,23 @@
                             onOpenImportExport={() => setIsImportExportOpen(true)}
                             onOpenGastos={() => setIsGastosOpen(true)}
                             onOpenMapa={() => setIsMapaOpen(true)}
+                            usuario={usuario}
+                            onLogout={handleLogout}
+                            tienePermiso={(rol, accion) => tienePermiso(rol, accion)}
                         />
                         <main className="flex-1 p-4 overflow-auto flex flex-col">
                             <div>
                                 <div className="flex items-center gap-2 mb-3 no-print">
                                     <IconMap className="h-5 w-5"/>
                                     <h2 className="text-lg font-semibold">Mapa de Sitios</h2>
-                                    <Badge variant="outline" className="ml-auto">Modo Local</Badge>
+                                    <div className="ml-auto flex items-center gap-3">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md">
+                                            <IconUser className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+                                            <span className="text-sm font-medium">{usuario.nombre}</span>
+                                            <span className="text-xs text-neutral-500 dark:text-neutral-400">({ROLES[usuario.rol]})</span>
+                                        </div>
+                                        <Badge variant="outline">Modo Local</Badge>
+                                    </div>
                                 </div>
                                 <SiteGrid 
                                     sitios={sitiosFiltrados}
@@ -1250,9 +1478,11 @@
                                     tiposDeSitio={tiposDeSitio}
                                 />
                             </div>
-                            <div className="mt-6 border-t pt-4 no-print">
-                               <Button onClick={() => { setPiscinaForm(DEFAULT_PISCINA_FORM_STATE); setIsPiscinaOpen(true); }} className="w-full md:w-auto"><IconUsers className="h-4 w-4 mr-2" /> Registrar Ingreso a Piscina</Button>
-                            </div>
+                            {tienePermiso(usuario?.rol, 'registrar_ingresos') && (
+                                <div className="mt-6 border-t pt-4 no-print">
+                                    <Button onClick={() => { setPiscinaForm(DEFAULT_PISCINA_FORM_STATE); setIsPiscinaOpen(true); }} className="w-full md:w-auto"><IconUsers className="h-4 w-4 mr-2" /> Registrar Ingreso a Piscina</Button>
+                                </div>
+                            )}
                         </main>
                     </div>
                     
@@ -1266,12 +1496,15 @@
                             <div className="pt-4 space-y-4">
                                 {(() => {
                                     const isOccupiedToday = estadoPorSitio[sitioActual]?.estado === 'ocupado';
+                                    const puedeRegistrar = tienePermiso(usuario?.rol, 'registrar_ingresos');
                                     return (
                                         <>
-                                            <div>
-                                                <Button className={`w-full ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'ocupado', checkin: dateToYMD(new Date()) })} disabled={isOccupiedToday}>Crear Ficha de Ingreso (Hoy)</Button>
-                                                <Button className={`w-full mt-2 ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'reservado' })}>Crear Nueva Reserva</Button>
-                                            </div>
+                                            {puedeRegistrar && (
+                                                <div>
+                                                    <Button className={`w-full ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'ocupado', checkin: dateToYMD(new Date()) })} disabled={isOccupiedToday}>Crear Ficha de Ingreso (Hoy)</Button>
+                                                    <Button className={`w-full mt-2 ${actionButtonClasses}`} onClick={() => handleOpenSheet('new', { estado: 'reservado' })}>Crear Nueva Reserva</Button>
+                                                </div>
+                                            )}
                                             
                                             {reservasDelSitio.length > 0 && 
                                                 <div className="space-y-2">
@@ -1283,14 +1516,18 @@
                                                                     <p className="font-semibold">{r.nombre} ({r.estado})</p>
                                                                     <p className="text-xs opacity-70">{r.estado === 'mantenimiento' ? 'Indefinido' : `${r.checkin} al ${r.checkout}`}</p>
                                                                 </div>
-                                                                <Button size="sm" variant="ghost" onClick={() => handleOpenSheet('edit', r)}>Editar</Button>
+                                                                {puedeRegistrar && (
+                                                                    <Button size="sm" variant="ghost" onClick={() => handleOpenSheet('edit', r)}>Editar</Button>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             }
                                             
-                                            <Button className={`w-full mt-4 ${actionButtonClasses}`} onClick={() => { setIsActionModalOpen(false); setIsDisableConfirmOpen(true); }}>Poner en Mantenimiento</Button>
+                                            {tienePermiso(usuario?.rol, 'configurar_tarifas') && (
+                                                <Button className={`w-full mt-4 ${actionButtonClasses}`} onClick={() => { setIsActionModalOpen(false); setIsDisableConfirmOpen(true); }}>Poner en Mantenimiento</Button>
+                                            )}
                                         </>
                                     );
                                 })()}
