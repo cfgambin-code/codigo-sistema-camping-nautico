@@ -47,6 +47,16 @@
                 display: none !important; /* Oculta elementos que no deben imprimirse */
             }
         }
+        
+        /* Prevenir overflow horizontal */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+        #root {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -246,7 +256,7 @@
                 </div>
             );
         };
-        const DialogContent = ({ children, className }) => <div className={`relative z-50 grid w-full max-w-lg gap-4 border bg-neutral-50 dark:bg-neutral-950 p-6 shadow-lg duration-200 rounded-lg ${className}`}>{children}</div>;
+        const DialogContent = ({ children, className }) => <div className={`relative z-50 grid w-full max-w-lg gap-4 border bg-neutral-50 dark:bg-neutral-950 p-4 sm:p-6 shadow-lg duration-200 rounded-lg ${className}`}>{children}</div>;
         const DialogHeader = ({ children, className }) => <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`}>{children}</div>;
         const DialogTitle = ({ children, className }) => <h2 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>{children}</h2>;
         const DialogDescription = ({ children, className }) => <p className={`text-sm text-neutral-500 dark:text-neutral-400 ${className}`}>{children}</p>;
@@ -302,6 +312,7 @@
         const IconLogIn = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>);
         const IconLogOut = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>);
         const IconUser = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
+        const IconMenu = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>);
 
 
         const DialogCloseButton = ({ onClick }) => (
@@ -413,7 +424,7 @@
             );
         };
 
-        const Sidebar = ({ resumen, filtroEstado, setFiltroEstado, onSetDark, isDark, onOpenReportes, onOpenSettings, onOpenImportExport, onOpenGastos, onOpenMapa, usuario, onLogout, tienePermiso }) => {
+        const Sidebar = ({ resumen, filtroEstado, setFiltroEstado, onSetDark, isDark, onOpenReportes, onOpenSettings, onOpenImportExport, onOpenGastos, onOpenMapa, usuario, onLogout, tienePermiso, isOpen, onToggle }) => {
             const Estado = ({ label, value }) => { 
                 const colorClass = { 
                     'Libres': 'text-emerald-500', 
@@ -423,24 +434,35 @@
                     'Piscina Hoy': 'text-cyan-500',
                     'Personas Hoy': 'text-indigo-500' 
                 }[label] || 'text-neutral-800'; 
-                return ( <div className="rounded-xl p-3 border shadow-sm bg-white dark:bg-neutral-900"><div className="text-xs opacity-70">{label}</div><div className={`mt-1 text-xl font-semibold ${colorClass}`}>{value}</div></div> );
+                return ( <div className="rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 border shadow-sm bg-white dark:bg-neutral-900"><div className="text-[10px] sm:text-xs opacity-70 leading-tight">{label}</div><div className={`mt-0.5 sm:mt-1 text-base sm:text-lg md:text-xl font-semibold ${colorClass} leading-tight`}>{value}</div></div> ); 
             };
             return (
-                <aside className="w-72 p-4 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200/60 dark:border-neutral-800 flex flex-col gap-4 no-print">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-semibold">Camping Náutico Rapel</h1>
-                        <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema">{isDark ? <IconSun className="h-4 w-4"/> : <IconMoon className="h-4 w-4"/>}</Button>
-                    </div>
+                <>
+                    {/* Overlay para móvil */}
+                    {isOpen && (
+                        <div 
+                            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                            onClick={onToggle}
+                        />
+                    )}
+                    <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 sm:w-72 p-2 sm:p-3 md:p-4 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200/60 dark:border-neutral-800 flex flex-col gap-2 sm:gap-3 md:gap-4 no-print transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 h-screen lg:h-auto overflow-y-auto`}>
+                        <div className="flex items-center justify-between">
+                            <h1 className="text-base sm:text-lg md:text-xl font-semibold leading-tight">Camping Náutico Rapel</h1>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema" className="h-8 w-8 sm:h-10 sm:w-10">{isDark ? <IconSun className="h-3 w-3 sm:h-4 sm:w-4"/> : <IconMoon className="h-3 w-3 sm:h-4 sm:w-4"/>}</Button>
+                                <Button variant="ghost" size="icon" onClick={onToggle} className="lg:hidden h-8 w-8 sm:h-10 sm:w-10" aria-label="Cerrar menú"><IconX className="h-3 w-3 sm:h-4 sm:w-4"/></Button>
+                            </div>
+                        </div>
                     {usuario && (
                         <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                        <IconUser className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <CardContent className="pt-3 sm:pt-4 md:pt-6 p-2 sm:p-4">
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <IconUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold truncate">{usuario.nombre}</p>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{ROLES[usuario.rol]}</p>
+                                        <p className="text-xs sm:text-sm font-semibold truncate">{usuario.nombre}</p>
+                                        <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">{ROLES[usuario.rol]}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -448,22 +470,22 @@
                     )}
                     {tienePermiso(usuario?.rol, 'ver_resumen') && (
                         <Card>
-                            <CardHeader className="pb-2"><CardTitle>Estado general</CardTitle></CardHeader>
-                            <CardContent className="grid grid-cols-2 gap-2">
+                            <CardHeader className="pb-1 sm:pb-2 p-2 sm:p-4"><CardTitle className="text-sm sm:text-base">Estado general</CardTitle></CardHeader>
+                            <CardContent className="grid grid-cols-2 gap-1.5 sm:gap-2 p-2 sm:p-4 pt-0">
                                 <Estado label="Libres" value={resumen.libres}/>
                                 <Estado label="Reservados" value={resumen.reservados}/>
                                 <Estado label="Ocupados" value={resumen.ocupados}/>
                                 <Estado label="Mant." value={resumen.mant}/>
                                 <Estado label="Piscina Hoy" value={resumen.piscinaHoy} />
                                 <Estado label="Personas Hoy" value={resumen.personasHoy} />
-                                <div className="col-span-2 text-sm mt-2"><b>Ingreso estimado: </b>${resumen.ingresoEstimado.toLocaleString("es-CL")}</div>
+                                <div className="col-span-2 text-xs sm:text-sm mt-1 sm:mt-2"><b>Ingreso estimado: </b><span className="text-[10px] sm:text-xs">${resumen.ingresoEstimado.toLocaleString("es-CL")}</span></div>
                             </CardContent>
                         </Card>
                     )}
                     {tienePermiso(usuario?.rol, 'ver_resumen') && (
                         <Card>
-                            <CardHeader className="pb-2"><CardTitle>Filtrar sitios</CardTitle></CardHeader>
-                            <CardContent>
+                            <CardHeader className="pb-1 sm:pb-2 p-2 sm:p-4"><CardTitle className="text-sm sm:text-base">Filtrar sitios</CardTitle></CardHeader>
+                            <CardContent className="p-2 sm:p-4 pt-0">
                                 <Select value={filtroEstado} onValueChange={setFiltroEstado}>
                                     <SelectItem value="todos">Todos</SelectItem><SelectItem value="libre">Libres</SelectItem>
                                     <SelectItem value="reservado">Reservados</SelectItem><SelectItem value="ocupado">Ocupados</SelectItem>
@@ -472,25 +494,26 @@
                             </CardContent>
                         </Card>
                     )}
-                    <div className="mt-auto flex flex-col gap-2">
+                    <div className="mt-auto flex flex-col gap-1.5 sm:gap-2">
                         {tienePermiso(usuario?.rol, 'ver_mapa') && (
-                            <Button className="w-full" variant="outline" onClick={onOpenMapa}><IconMap className="h-4 w-4 mr-2"/> Ver Mapa del Camping</Button>
+                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenMapa}><IconMap className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Ver Mapa</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'ingresar_gastos') && (
-                            <Button className="w-full" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-4 w-4 mr-2"/> Ingreso de Gastos</Button>
+                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Gastos</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'ver_reportes') && (
-                            <Button className="w-full" variant="outline" onClick={onOpenReportes}><IconFileText className="h-4 w-4 mr-2"/> Reportes</Button>
+                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenReportes}><IconFileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Reportes</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'configurar_tarifas') && (
-                            <Button className="w-full" variant="outline" onClick={onOpenSettings}><IconSettings className="h-4 w-4 mr-2"/> Configuración de Tarifas</Button>
+                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenSettings}><IconSettings className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Configuración</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'exportar_datos') && (
-                            <Button className="w-full" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-4 w-4 mr-2"/> Exportar / Importar</Button>
+                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Exportar</Button>
                         )}
-                        <Button className="w-full" variant="destructive" onClick={onLogout}><IconLogOut className="h-4 w-4 mr-2"/> Cerrar Sesión</Button>
+                        <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="destructive" onClick={onLogout}><IconLogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Cerrar Sesión</Button>
                     </div>
                 </aside>
+            </>
             );
         };
         
@@ -510,17 +533,19 @@
             };
 
             return (
-                <div className="grid grid-cols-5 md:grid-cols-7 lg:grid-cols-10 xl:grid-cols-15 gap-2">
-                    {sitios.map((n) => {
-                        const estado = (estadoPorSitio[n] || {}).estado || "libre";
-                        const tipo = tiposDeSitio[n] || 'normal';
-                        return (
-                            <button key={n} onClick={() => onSitioClick(n)} className={`relative aspect-square rounded-xl p-2 text-sm font-medium shadow-sm border flex items-center justify-center hover:scale-[1.02] transition-transform ${colorPorEstado(estado, tipo)}`} aria-label={`Sitio ${n}`}>
-                                <span className="font-bold text-2xl">{n}</span>
-                                <small className="absolute bottom-1 right-2 opacity-80 uppercase text-[10px]">{estado}</small>
-                            </button>
-                        );
-                    })}
+                <div className="w-full overflow-x-hidden">
+                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-15 xl:grid-cols-15 2xl:grid-cols-15 gap-1 sm:gap-1.5 md:gap-2">
+                        {sitios.map((n) => {
+                            const estado = (estadoPorSitio[n] || {}).estado || "libre";
+                            const tipo = tiposDeSitio[n] || 'normal';
+                            return (
+                                <button key={n} onClick={() => onSitioClick(n)} className={`relative aspect-square rounded-md sm:rounded-lg p-0.5 sm:p-1 text-[10px] sm:text-xs font-medium shadow-sm border flex flex-col items-center justify-center hover:scale-[1.05] transition-transform ${colorPorEstado(estado, tipo)}`} aria-label={`Sitio ${n}`}>
+                                    <span className="font-bold text-sm sm:text-base md:text-lg lg:text-xl leading-tight">{n}</span>
+                                    <small className="text-[8px] sm:text-[9px] opacity-70 uppercase mt-0.5 leading-tight">{estado}</small>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             );
         };
@@ -533,22 +558,22 @@
             const METODOS_PAGO = [ { value: 'efectivo', label: 'Efectivo' }, { value: 'debito', label: 'Débito' }, { value: 'credito', label: 'Crédito' }, { value: 'transferencia', label: 'Transferencia' } ]; 
             return ( 
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                <DialogContent className="max-w-6xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
                     <DialogCloseButton onClick={() => onOpenChange(false)} />
-                    <DialogHeader className="p-6 border-b">
-                        <DialogTitle>{form.id ? 'Editando Ficha' : 'Nueva Ficha'} para Sitio #{form.sitio} (<span className="capitalize">{tiposDeSitio[form.sitio || 0]}</span>)</DialogTitle>
+                    <DialogHeader className="p-4 sm:p-6 border-b">
+                        <DialogTitle className="text-base sm:text-lg">{form.id ? 'Editando Ficha' : 'Nueva Ficha'} para Sitio #{form.sitio} (<span className="capitalize">{tiposDeSitio[form.sitio || 0]}</span>)</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
                         <Card>
-                            <CardHeader><CardTitle>Datos del Titular</CardTitle></CardHeader>
+                            <CardHeader><CardTitle className="text-sm sm:text-base">Datos del Titular</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-12 gap-4 items-start">
-                                    <div className="col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={(e) => setForm({ ...form, rut: e.target.value })} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
-                                    <div className="col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
-                                    <div className="col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular} onChange={(e) => setForm({ ...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
-                                    <div className="col-span-2"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={(e) => setForm({ ...form, telefono: e.target.value})} /></div>
-                                    <div className="col-span-2"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value})} /></div>
-                                    <div className="col-span-2 flex items-end gap-1">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+                                    <div className="sm:col-span-1 lg:col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={(e) => setForm({ ...form, rut: e.target.value })} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
+                                    <div className="sm:col-span-1 lg:col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
+                                    <div className="sm:col-span-1 lg:col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular} onChange={(e) => setForm({ ...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
+                                    <div className="sm:col-span-1 lg:col-span-2"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={(e) => setForm({ ...form, telefono: e.target.value})} /></div>
+                                    <div className="sm:col-span-1 lg:col-span-2"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value})} /></div>
+                                    <div className="sm:col-span-1 lg:col-span-2 flex items-end gap-1">
                                         <div className="flex-grow">
                                             <Label>Patente Principal</Label>
                                             <Input value={(form.patentes && form.patentes[0]) || ''} onChange={(e) => handlePatenteChange(0, e.target.value)} />
@@ -561,9 +586,9 @@
                             </CardContent>
                         </Card>
                         <Card>
-                            <CardHeader><CardTitle>Detalles de la Estadía</CardTitle></CardHeader>
+                            <CardHeader><CardTitle className="text-sm sm:text-base">Detalles de la Estadía</CardTitle></CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-6 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                                     <div><Label htmlFor="checkin">Check-in</Label><Input id="checkin" type="date" value={form.checkin || ''} onChange={(e) => setForm({ ...form, checkin: e.target.value })} /></div>
                                     <div><Label htmlFor="checkinTime">Hora Ingreso</Label><Input id="checkinTime" type="time" value={form.checkinTime || ''} onChange={(e) => setForm({ ...form, checkinTime: e.target.value })} /></div>
                                     <div><Label htmlFor="checkout">Check-out</Label><Input id="checkout" type="date" value={form.checkout || ''} onChange={(e) => setForm({ ...form, checkout: e.target.value })} /></div>
@@ -645,14 +670,14 @@
                             </CardContent>
                         </Card>
                     </div>
-                    <div className="flex justify-between items-center p-4 border-t">
-                         <div className="text-xs text-right">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-2 p-3 sm:p-4 border-t">
+                         <div className="text-xs text-left sm:text-right w-full sm:w-auto">
                             <p>Estadía: ${totalEstadia.toLocaleString("es-CL")}</p>
                             <p>Adicional Visitas: ${totalVisitas.toLocaleString("es-CL")}</p>
                             {totalDescuento > 0 && <p className="text-red-600">Descuento: -${totalDescuento.toLocaleString("es-CL")}</p>}
-                            <p className="font-bold text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
+                            <p className="font-bold text-sm sm:text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
                         </div>
-                        <div className="flex gap-2">{form.id && <Button variant="destructive" onClick={() => liberarSitio(form.id)}>Liberar Sitio</Button>}<Button onClick={guardarReserva} disabled={Object.keys(errors).length > 0}>Guardar Ficha</Button></div>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto"><div className="flex gap-2">{form.id && <Button variant="destructive" onClick={() => liberarSitio(form.id)} className="flex-1 sm:flex-none">Liberar Sitio</Button>}<Button onClick={guardarReserva} disabled={Object.keys(errors).length > 0} className="flex-1 sm:flex-none">Guardar Ficha</Button></div></div>
                     </div>
                 </DialogContent>
             </Dialog> 
@@ -703,13 +728,13 @@
 
             return ( 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                <DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
                     <DialogCloseButton onClick={() => setIsOpen(false)} />
-                    <DialogHeader>
-                        <DialogTitle>Configuración</DialogTitle>
-                        <DialogDescription>Gestiona las tarifas, temporadas y sitios del camping.</DialogDescription>
+                    <DialogHeader className="p-4 sm:p-6 border-b">
+                        <DialogTitle className="text-base sm:text-lg">Configuración</DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">Gestiona las tarifas, temporadas y sitios del camping.</DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-6">
                         <Tabs defaultValue="tarifas">
                             <TabsList className="grid w-full grid-cols-3">
                                 <TabsTrigger value="tarifas">Tarifas y Temporadas</TabsTrigger>
@@ -717,10 +742,10 @@
                                 <TabsTrigger value="gestion-sitios">Gestionar Sitios</TabsTrigger>
                             </TabsList>
                             <TabsContent value="tarifas" className="pt-4">
-                                <Card><CardHeader><CardTitle>1. Definición de Temporadas</CardTitle></CardHeader><CardContent className="grid grid-cols-4 gap-4">{(['alta', 'media', 'baja']).map(temporada => ( <div key={temporada} className="border rounded-lg p-3"><h4 className="font-semibold mb-2 capitalize">Temporada {temporada}</h4><div className="grid grid-cols-2 gap-2">{MESES.map((mes, index) => (<div key={mes} className="flex items-center"><input type="checkbox" id={`${temporada}-${index}`} checked={config.mesesTemporada[temporada].includes(index)} onChange={() => handleMonthChange(index, temporada)} className="h-4 w-4" /><label htmlFor={`${temporada}-${index}`} className="ml-2 text-sm">{mes}</label></div>))}</div></div> ))}<div className="border rounded-lg p-3 bg-neutral-50 dark:bg-neutral-900"><h4 className="font-semibold mb-2">Generales</h4><div className="space-y-2"><div><Label className="text-xs">Máx. Personas Base (Sitios)</Label><Input type="number" value={config.maxPersonasBase} onChange={e => setConfig({...config, maxPersonasBase: parseInt(e.target.value) || 0})} /></div><div><Label className="text-xs">Hora de Medio Día (Sitios)</Label><Input type="number" min="0" max="23" value={config.horaMedioDia} onChange={e => setConfig({...config, horaMedioDia: parseInt(e.target.value) || 0})} /></div></div></div></CardContent></Card>
-                                <Card className="mt-4"><CardHeader><CardTitle>2. Precios por Temporada y Tipo de Servicio</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 md:grid-cols-3 gap-4">{(['alta', 'media', 'baja']).map(temporada => (<div key={temporada} className="p-4 border rounded-lg"><h4 className="font-semibold capitalize text-lg mb-3">Temporada {temporada}</h4><div className="space-y-4"><div><h5 className="text-sm font-medium mb-2">Valor Diario del Sitio</h5><div className="space-y-2"><div><Label className="text-xs">Orilla de Lago</Label><Input type="number" value={config.precios[temporada].orilla} onChange={e => handlePriceChange(temporada, 'orilla', e.target.value)} /></div><div><Label className="text-xs">Normal</Label><Input type="number" value={config.precios[temporada].normal} onChange={e => handlePriceChange(temporada, 'normal', e.target.value)} /></div><div><Label className="text-xs">Especial</Label><Input type="number" value={config.precios[temporada].especial} onChange={e => handlePriceChange(temporada, 'especial', e.target.value)} /></div></div></div><div><h5 className="text-sm font-medium mb-2">Costos Adicionales</h5><div className="space-y-2"><div><Label className="text-xs">Por Persona Extra / Día (Sitios)</Label><Input type="number" value={config.adicionalPorPersona[temporada]} onChange={e => handleAdicionalChange(temporada, e.target.value)} /></div><div><Label className="text-xs">Precio Piscina / Persona</Label><Input type="number" value={config.precioPiscina[temporada]} onChange={e => handlePiscinaChange(temporada, e.target.value)} /></div></div></div></div></div>))}</div></CardContent></Card>
+                                <Card><CardHeader><CardTitle className="text-sm sm:text-base">1. Definición de Temporadas</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">{(['alta', 'media', 'baja']).map(temporada => ( <div key={temporada} className="border rounded-lg p-3"><h4 className="font-semibold mb-2 capitalize">Temporada {temporada}</h4><div className="grid grid-cols-2 gap-2">{MESES.map((mes, index) => (<div key={mes} className="flex items-center"><input type="checkbox" id={`${temporada}-${index}`} checked={config.mesesTemporada[temporada].includes(index)} onChange={() => handleMonthChange(index, temporada)} className="h-4 w-4" /><label htmlFor={`${temporada}-${index}`} className="ml-2 text-sm">{mes}</label></div>))}</div></div> ))}<div className="border rounded-lg p-3 bg-neutral-50 dark:bg-neutral-900"><h4 className="font-semibold mb-2">Generales</h4><div className="space-y-2"><div><Label className="text-xs">Máx. Personas Base (Sitios)</Label><Input type="number" value={config.maxPersonasBase} onChange={e => setConfig({...config, maxPersonasBase: parseInt(e.target.value) || 0})} /></div><div><Label className="text-xs">Hora de Medio Día (Sitios)</Label><Input type="number" min="0" max="23" value={config.horaMedioDia} onChange={e => setConfig({...config, horaMedioDia: parseInt(e.target.value) || 0})} /></div></div></div></CardContent></Card>
+                                <Card className="mt-4"><CardHeader><CardTitle className="text-sm sm:text-base">2. Precios por Temporada y Tipo de Servicio</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">{(['alta', 'media', 'baja']).map(temporada => (<div key={temporada} className="p-4 border rounded-lg"><h4 className="font-semibold capitalize text-lg mb-3">Temporada {temporada}</h4><div className="space-y-4"><div><h5 className="text-sm font-medium mb-2">Valor Diario del Sitio</h5><div className="space-y-2"><div><Label className="text-xs">Orilla de Lago</Label><Input type="number" value={config.precios[temporada].orilla} onChange={e => handlePriceChange(temporada, 'orilla', e.target.value)} /></div><div><Label className="text-xs">Normal</Label><Input type="number" value={config.precios[temporada].normal} onChange={e => handlePriceChange(temporada, 'normal', e.target.value)} /></div><div><Label className="text-xs">Especial</Label><Input type="number" value={config.precios[temporada].especial} onChange={e => handlePriceChange(temporada, 'especial', e.target.value)} /></div></div></div><div><h5 className="text-sm font-medium mb-2">Costos Adicionales</h5><div className="space-y-2"><div><Label className="text-xs">Por Persona Extra / Día (Sitios)</Label><Input type="number" value={config.adicionalPorPersona[temporada]} onChange={e => handleAdicionalChange(temporada, e.target.value)} /></div><div><Label className="text-xs">Precio Piscina / Persona</Label><Input type="number" value={config.precioPiscina[temporada]} onChange={e => handlePiscinaChange(temporada, e.target.value)} /></div></div></div></div></div>))}</div></CardContent></Card>
                             </TabsContent>
-                            <TabsContent value="tipos-sitio"><Card><CardHeader><CardTitle>Asignación de Tipo por Sitio</CardTitle></CardHeader><CardContent className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4">{sitiosList.map(sitioNum => (<div key={sitioNum}><Label>Sitio #{sitioNum}</Label><Select value={sitios[sitioNum] || 'normal'} onValueChange={(v) => handleTipoSitioChange(sitioNum, v)}><SelectItem value="normal">Normal</SelectItem><SelectItem value="orilla">Orilla Lago</SelectItem><SelectItem value="especial">Especial</SelectItem></Select></div>))} </CardContent></Card></TabsContent>
+                            <TabsContent value="tipos-sitio"><Card><CardHeader><CardTitle className="text-sm sm:text-base">Asignación de Tipo por Sitio</CardTitle></CardHeader><CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3 sm:gap-4">{sitiosList.map(sitioNum => (<div key={sitioNum}><Label>Sitio #{sitioNum}</Label><Select value={sitios[sitioNum] || 'normal'} onValueChange={(v) => handleTipoSitioChange(sitioNum, v)}><SelectItem value="normal">Normal</SelectItem><SelectItem value="orilla">Orilla Lago</SelectItem><SelectItem value="especial">Especial</SelectItem></Select></div>))} </CardContent></Card></TabsContent>
                             <TabsContent value="gestion-sitios">
                                 <Card>
                                     <CardHeader><CardTitle>Añadir Nuevo Sitio</CardTitle></CardHeader>
@@ -743,7 +768,7 @@
                             </TabsContent>
                         </Tabs>
                     </div>
-                    <div className="flex justify-end p-6 border-t -mb-6 -mx-6"><Button onClick={() => setIsOpen(false)}>Cerrar</Button></div>
+                    <div className="flex justify-end p-3 sm:p-6 border-t"><Button onClick={() => setIsOpen(false)}>Cerrar</Button></div>
                     
                     <Dialog open={!!deleteSiteConfirm} onOpenChange={() => setDeleteSiteConfirm(null)}>
                         <DialogContent>
@@ -833,17 +858,17 @@
 
             return (
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                    <DialogContent className="max-w-6xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
                         <DialogCloseButton onClick={() => setIsOpen(false)} />
-                        <DialogHeader className="p-6 border-b">
-                            <DialogTitle>Registro de Ingreso a Piscina (Día)</DialogTitle>
-                            <DialogDescription>Precio por persona hoy ({temporadaActual}): ${precioPorPersona.toLocaleString('es-CL')}</DialogDescription>
+                        <DialogHeader className="p-4 sm:p-6 border-b">
+                            <DialogTitle className="text-base sm:text-lg">Registro de Ingreso a Piscina (Día)</DialogTitle>
+                            <DialogDescription className="text-xs sm:text-sm">Precio por persona hoy ({temporadaActual}): ${precioPorPersona.toLocaleString('es-CL')}</DialogDescription>
                         </DialogHeader>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
                              <Card>
-                                <CardHeader><CardTitle>Datos del Titular</CardTitle></CardHeader>
+                                <CardHeader><CardTitle className="text-sm sm:text-base">Datos del Titular</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
-                                     <div className="grid grid-cols-12 gap-4 items-start">
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
                                         <div className="col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={e => setForm({...form, rut: e.target.value})} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
                                         <div className="col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={e => setForm({...form, nombre: e.target.value})} />{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
                                         <div className="col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular || ''} onChange={e => setForm({...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
@@ -907,13 +932,13 @@
                                 </CardContent>
                             </Card>
                         </div>
-                        <div className="flex justify-between items-center p-6 border-t">
-                             <div className="text-xs text-right">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-2 p-3 sm:p-6 border-t">
+                             <div className="text-xs text-left sm:text-right w-full sm:w-auto">
                                 <p>Subtotal: ${subtotal.toLocaleString("es-CL")}</p>
                                 {totalDescuento > 0 && <p className="text-red-600">Descuento: -${totalDescuento.toLocaleString("es-CL")}</p>}
-                                <p className="font-bold text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
+                                <p className="font-bold text-sm sm:text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
                             </div>
-                            <Button onClick={handleSave} disabled={Object.keys(errors).length > 0}>Guardar Ingreso</Button>
+                            <Button onClick={handleSave} disabled={Object.keys(errors).length > 0} className="w-full sm:w-auto">Guardar Ingreso</Button>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -933,10 +958,10 @@
                 const checkinsDelDia = reservas.filter(r => r.checkin === selectedDate).length; 
                 return { pagos: pagosDelDia, totalIngresos, desglose, checkins: checkinsDelDia, numPagos: pagosDelDia.length, gastos: gastosDelDia, totalGastos }; 
             }, [selectedDate, reservas, ingresosPiscina, gastos]); 
-            return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl h-[90vh] flex flex-col"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Reporte: Cuadratura de Caja</DialogTitle><DialogDescription>Selecciona una fecha para generar el reporte.</DialogDescription></DialogHeader><div className="flex items-center gap-4 no-print"><Label htmlFor="report-date">Fecha del Reporte</Label><Input id="report-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-48" /><Button onClick={() => window.print()} className="ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Cuadratura de Caja Diaria</h2><p className="text-lg font-semibold">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Ingreso Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-emerald-600">${reportData.totalIngresos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Gasto Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-red-600">${reportData.totalGastos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nº de Pagos Recibidos</CardTitle><CardDescription className="text-2xl font-bold">{reportData.numPagos}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nuevos Check-Ins (Sitios)</CardTitle><CardDescription className="text-2xl font-bold">{reportData.checkins}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Ingresos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Origen</th><th className="p-2 text-left">Titular</th><th className="p-2 text-left capitalize">Método</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.pagos.map((p, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">{p.origen}</td><td className="p-2">{p.nombre}</td><td className="p-2 capitalize">{p.metodo}</td><td className="p-2 text-right">${p.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.pagos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron pagos en esta fecha.</td></tr>)}</tbody></table></div></div>
+            return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Cuadratura de Caja</DialogTitle><DialogDescription className="text-xs sm:text-sm">Selecciona una fecha para generar el reporte.</DialogDescription></DialogHeader><div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-6 no-print border-b"><Label htmlFor="report-date" className="text-xs sm:text-sm">Fecha del Reporte</Label><Input id="report-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-48" /><Button onClick={() => window.print()} className="w-full sm:w-auto sm:ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Cuadratura de Caja Diaria</h2><p className="text-lg font-semibold">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Ingreso Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-emerald-600">${reportData.totalIngresos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Gasto Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-red-600">${reportData.totalGastos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nº de Pagos Recibidos</CardTitle><CardDescription className="text-2xl font-bold">{reportData.numPagos}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nuevos Check-Ins (Sitios)</CardTitle><CardDescription className="text-2xl font-bold">{reportData.checkins}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Ingresos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Origen</th><th className="p-2 text-left">Titular</th><th className="p-2 text-left capitalize">Método</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.pagos.map((p, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">{p.origen}</td><td className="p-2">{p.nombre}</td><td className="p-2 capitalize">{p.metodo}</td><td className="p-2 text-right">${p.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.pagos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron pagos en esta fecha.</td></tr>)}</tbody></table></div></div>
                                 <div><h3 className="font-semibold mb-2">Detalle de Gastos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Detalle</th><th className="p-2 text-left">Observaciones</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.gastos.map((g, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2 capitalize">{g.type}</td><td className="p-2 text-xs">{g.type === 'compra' ? `Doc: ${g.doc} - RUT: ${g.rut}` : `Nombre: ${g.nombre} - Días: ${g.dias} - Función: ${g.funcion}`}</td><td className="p-2 text-xs">{g.observaciones}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.gastos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron gastos en esta fecha.</td></tr>)}</tbody></table></div></div>
                                 <div><h3 className="font-semibold mb-2">Desglose por Forma de Pago</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Efectivo</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.efectivo || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Débito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.debito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Crédito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.credito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Transferencia</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.transferencia || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card></div></div></div></div></DialogContent></Dialog> );}
-        function ReporteOcupacion({ isOpen, setIsOpen, reservas }) { const reportData = useMemo(() => { const today = dateToYMD(new Date()); const ocupadosHoy = reservas.filter(r => r.checkin <= today && r.checkout >= today && r.estado === 'ocupado'); const totalPersonasHoy = ocupadosHoy.reduce((sum, r) => sum + (r.adultos || 0) + (r.ninos || 0), 0); return { ocupados: ocupadosHoy, totalSitios: ocupadosHoy.length, totalPersonas: totalPersonasHoy }; }, [reservas]); return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl h-[90vh] flex flex-col"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Reporte: Ocupación Actual</DialogTitle><DialogDescription>Muestra todos los sitios actualmente ocupados.</DialogDescription></DialogHeader><div className="flex items-center gap-4 no-print"><Button onClick={() => window.print()} className="ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 mt-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Reporte de Ocupación Actual</h2><p className="text-lg font-semibold">{new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card><CardHeader className="p-4"><CardTitle>Total Sitios Ocupados</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalSitios}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Total Personas en Camping</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalPersonas}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Sitios Ocupados</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Sitio</th><th className="p-2 text-left">Titular</th><th className="p-2 text-right">Total Personas</th></tr></thead><tbody>{reportData.ocupados.map((r, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">#{r.sitio}</td><td className="p-2">{r.nombre}</td><td className="p-2 text-right">{r.adultos + r.ninos}</td></tr>))}{reportData.ocupados.length === 0 && (<tr><td colSpan="3" className="p-4 text-center text-neutral-500">No hay sitios ocupados actualmente.</td></tr>)}</tbody></table></div></div></div></div></DialogContent></Dialog> ); }
+        function ReporteOcupacion({ isOpen, setIsOpen, reservas }) { const reportData = useMemo(() => { const today = dateToYMD(new Date()); const ocupadosHoy = reservas.filter(r => r.checkin <= today && r.checkout >= today && r.estado === 'ocupado'); const totalPersonasHoy = ocupadosHoy.reduce((sum, r) => sum + (r.adultos || 0) + (r.ninos || 0), 0); return { ocupados: ocupadosHoy, totalSitios: ocupadosHoy.length, totalPersonas: totalPersonasHoy }; }, [reservas]); return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Ocupación Actual</DialogTitle><DialogDescription className="text-xs sm:text-sm">Muestra todos los sitios actualmente ocupados.</DialogDescription></DialogHeader><div className="flex items-center gap-4 p-3 sm:p-6 no-print border-b"><Button onClick={() => window.print()} className="ml-auto w-full sm:w-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 mt-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Reporte de Ocupación Actual</h2><p className="text-lg font-semibold">{new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card><CardHeader className="p-4"><CardTitle>Total Sitios Ocupados</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalSitios}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Total Personas en Camping</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalPersonas}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Sitios Ocupados</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Sitio</th><th className="p-2 text-left">Titular</th><th className="p-2 text-right">Total Personas</th></tr></thead><tbody>{reportData.ocupados.map((r, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">#{r.sitio}</td><td className="p-2">{r.nombre}</td><td className="p-2 text-right">{r.adultos + r.ninos}</td></tr>))}{reportData.ocupados.length === 0 && (<tr><td colSpan="3" className="p-4 text-center text-neutral-500">No hay sitios ocupados actualmente.</td></tr>)}</tbody></table></div></div></div></div></DialogContent></Dialog> ); }
         function ImportExportDialog({ isOpen, setIsOpen, reservas, setReservas, tarifasConfig, setTarifasConfig, tiposDeSitio, setSitios, ingresosPiscina, setIngresosPiscina }) { const [text, setText] = useState(""); const [err, setErr] = useState(null); const handleExport = () => { const dataToExport = JSON.stringify({ reservas, tarifasConfig, tiposDeSitio, ingresosPiscina }, null, 2); setText(dataToExport); }; const handleImport = () => { try { setErr(null); const data = JSON.parse(text); if (typeof data !== 'object' || data === null) throw new Error("El JSON debe ser un objeto válido."); if (data.reservas) setReservas(data.reservas); if (data.tarifasConfig) setTarifasConfig(data.tarifasConfig); if (data.tiposDeSitio) setTiposDeSitio(data.tiposDeSitio); if(data.ingresosPiscina) setIngresosPiscina(data.ingresosPiscina); setIsOpen(false); } catch (e) { setErr(e.message); } }; return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Exportar / Importar Datos</DialogTitle></DialogHeader><Tabs defaultValue="exportar"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="exportar">Exportar</TabsTrigger><TabsTrigger value="importar">Importar</TabsTrigger></TabsList><TabsContent value="exportar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" readOnly value={text} placeholder="Haz clic en 'Preparar Exportación' para generar los datos."/><Button onClick={handleExport}>Preparar Exportación</Button></TabsContent><TabsContent value="importar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" value={text} onChange={(e) => setText(e.target.value)} placeholder="Pega aquí el JSON exportado."/><Button onClick={handleImport}>Cargar y Reemplazar Datos</Button>{err && <p className="text-sm text-red-600\">{err}</p>}</TabsContent></Tabs></DialogContent></Dialog> );}
 
         function IngresoGastosDialog({ isOpen, setIsOpen, gastos, onSave }) {
@@ -973,27 +998,28 @@
 
             return (
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogContent className="max-w-6xl">
+                    <DialogContent className="max-w-6xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
                         <DialogCloseButton onClick={() => setIsOpen(false)} />
-                        <DialogHeader>
-                            <DialogTitle>Ingreso de Gastos Diarios</DialogTitle>
-                            <div className="flex items-center gap-2 pt-2">
-                                <Label htmlFor="gasto-date">Mostrando gastos para la fecha:</Label>
-                                <Input id="gasto-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-48" />
+                        <DialogHeader className="p-4 sm:p-6 border-b">
+                            <DialogTitle className="text-base sm:text-lg">Ingreso de Gastos Diarios</DialogTitle>
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
+                                <Label htmlFor="gasto-date" className="text-xs sm:text-sm">Mostrando gastos para la fecha:</Label>
+                                <Input id="gasto-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-48" />
                             </div>
                         </DialogHeader>
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
                         <Tabs defaultValue="compra">
                             <TabsList className="grid w-full grid-cols-2">
                                 <TabsTrigger value="compra">Compra</TabsTrigger>
                                 <TabsTrigger value="pago">Pago Días Trabajados</TabsTrigger>
                             </TabsList>
                             <TabsContent value="compra">
-                                <div className="grid grid-cols-4 gap-2 items-end mt-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 items-end mt-4">
                                     <div><Label>Nº Documento</Label><Input value={nuevoGastoCompra.doc} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, doc: e.target.value})} /></div>
                                     <div><Label>RUT Proveedor</Label><Input value={nuevoGastoCompra.rut} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, rut: e.target.value})}/></div>
                                     <div className="col-span-2"><Label>Monto</Label><Input type="number" value={nuevoGastoCompra.monto} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, monto: parseInt(e.target.value || '0')})} /></div>
-                                    <div className="col-span-4"><Label>Observaciones</Label><textarea value={nuevoGastoCompra.observaciones} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, observaciones: e.target.value})} className="flex w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm" /></div>
-                                    <div className="col-span-4"><Button className="w-full" onClick={() => handleAddGasto('compra')}>Agregar Gasto de Compra</Button></div>
+                                    <div className="sm:col-span-2 lg:col-span-4"><Label>Observaciones</Label><textarea value={nuevoGastoCompra.observaciones} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, observaciones: e.target.value})} className="flex w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm" /></div>
+                                    <div className="sm:col-span-2 lg:col-span-4"><Button className="w-full" onClick={() => handleAddGasto('compra')}>Agregar Gasto de Compra</Button></div>
                                 </div>
                                 <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
                                    <table className="w-full text-sm">
@@ -1004,13 +1030,13 @@
                                 <p className="text-right font-bold mt-2">Total Compras: ${totalGastosCompra.toLocaleString('es-CL')}</p>
                             </TabsContent>
                             <TabsContent value="pago">
-                                 <div className="grid grid-cols-5 gap-2 items-end mt-4">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 items-end mt-4">
                                     <div><Label>RUT</Label><Input value={nuevoGastoPago.rut} onChange={e => setNuevoGastoPago({...nuevoGastoPago, rut: e.target.value})} /></div>
                                     <div><Label>Nombre</Label><Input value={nuevoGastoPago.nombre} onChange={e => setNuevoGastoPago({...nuevoGastoPago, nombre: e.target.value})}/></div>
                                     <div><Label>Días</Label><Input type="number" value={nuevoGastoPago.dias} onChange={e => setNuevoGastoPago({...nuevoGastoPago, dias: parseInt(e.target.value || '0')})} /></div>
                                     <div><Label>Función</Label><Input value={nuevoGastoPago.funcion} onChange={e => setNuevoGastoPago({...nuevoGastoPago, funcion: e.target.value})} /></div>
                                     <div><Label>Monto Total</Label><Input type="number" value={nuevoGastoPago.monto} onChange={e => setNuevoGastoPago({...nuevoGastoPago, monto: parseInt(e.target.value || '0')})} /></div>
-                                    <div className="col-span-5"><Button className="w-full" onClick={() => handleAddGasto('pago')}>Agregar Pago</Button></div>
+                                    <div className="sm:col-span-2 lg:col-span-5"><Button className="w-full" onClick={() => handleAddGasto('pago')}>Agregar Pago</Button></div>
                                 </div>
                                 <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
                                    <table className="w-full text-sm">
@@ -1021,8 +1047,9 @@
                                 <p className="text-right font-bold mt-2">Total Pagos: ${totalGastosPago.toLocaleString('es-CL')}</p>
                             </TabsContent>
                         </Tabs>
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={handleSave}>Guardar Cambios para el Día Seleccionado</Button>
+                        </div>
+                        <div className="flex justify-end p-3 sm:p-6 border-t">
+                            <Button onClick={handleSave} className="w-full sm:w-auto">Guardar Cambios para el Día Seleccionado</Button>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -1133,21 +1160,21 @@
                     onClick={() => setIsOpen(false)}
                 >
                     <div 
-                        className="relative z-50 w-[95vw] h-[95vh] max-w-[95vw] max-h-[95vh] bg-neutral-50 dark:bg-neutral-950 border rounded-lg shadow-lg flex flex-col overflow-hidden"
+                        className="relative z-50 w-[95vw] sm:w-[90vw] h-[95vh] sm:h-[90vh] max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] sm:max-h-[90vh] bg-neutral-50 dark:bg-neutral-950 border rounded-lg shadow-lg flex flex-col overflow-hidden"
                         onClick={e => e.stopPropagation()}
                     >
                         <button 
                             onClick={() => setIsOpen(false)} 
-                            className="absolute top-4 right-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-white dark:bg-neutral-800 p-2 shadow-lg"
+                            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-white dark:bg-neutral-800 p-2 shadow-lg"
                         >
-                            <IconX className="h-5 w-5" />
+                            <IconX className="h-4 w-4 sm:h-5 sm:w-5" />
                             <span className="sr-only">Cerrar</span>
                         </button>
-                        <div className="p-4 border-b">
-                            <h2 className="text-xl font-semibold leading-none tracking-tight">Mapa del Camping</h2>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Vista general de la distribución de los sitios</p>
+                        <div className="p-3 sm:p-4 border-b">
+                            <h2 className="text-lg sm:text-xl font-semibold leading-none tracking-tight">Mapa del Camping</h2>
+                            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">Vista general de la distribución de los sitios</p>
                         </div>
-                        <div className="flex-1 flex justify-center items-center overflow-auto p-4">
+                        <div className="flex-1 flex justify-center items-center overflow-auto p-2 sm:p-4">
                             <img 
                                 src={MAP_IMAGE_URL} 
                                 alt="Mapa del Camping" 
@@ -1199,7 +1226,22 @@
             const [reservasDelSitio, setReservasDelSitio] = useState([]);
             const [filtroEstado, setFiltroEstado] = useState("todos");
             const [formTypeForDialogs, setFormTypeForDialogs] = useState('sitio');
+            const [sidebarOpen, setSidebarOpen] = useState(false);
 
+            // Efecto para detectar el tamaño de pantalla y ajustar el sidebar
+            useEffect(() => {
+                const handleResize = () => {
+                    // En pantallas grandes (lg+), el sidebar siempre debe estar visible
+                    if (window.innerWidth >= 1024) {
+                        // No necesitamos hacer nada, CSS se encarga con lg:translate-x-0
+                    } else {
+                        // En pantallas pequeñas, mantener el estado actual
+                    }
+                };
+                handleResize(); // Ejecutar al montar
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
 
             // DATOS MEMOIZADOS: Cálculos que se realizan solo cuando sus dependencias cambian, para optimizar el rendimiento.
             
@@ -1440,35 +1482,46 @@
 
             // RENDERIZADO DEL COMPONENTE: Devuelve el JSX que se mostrará en pantalla.
             return (
-                <div>
-                    <div className="min-h-screen flex bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50">
+                <div className="overflow-x-hidden max-w-full">
+                    <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 overflow-x-hidden">
                         <Sidebar
                             resumen={resumen}
                             filtroEstado={filtroEstado}
                             setFiltroEstado={setFiltroEstado}
                             isDark={dark}
                             onSetDark={() => setDark(d => !d)}
-                            onOpenReportes={() => setIsReportesMenuOpen(true)}
-                            onOpenSettings={() => setIsSettingsOpen(true)}
-                            onOpenImportExport={() => setIsImportExportOpen(true)}
-                            onOpenGastos={() => setIsGastosOpen(true)}
-                            onOpenMapa={() => setIsMapaOpen(true)}
+                            onOpenReportes={() => { setIsReportesMenuOpen(true); setSidebarOpen(false); }}
+                            onOpenSettings={() => { setIsSettingsOpen(true); setSidebarOpen(false); }}
+                            onOpenImportExport={() => { setIsImportExportOpen(true); setSidebarOpen(false); }}
+                            onOpenGastos={() => { setIsGastosOpen(true); setSidebarOpen(false); }}
+                            onOpenMapa={() => { setIsMapaOpen(true); setSidebarOpen(false); }}
                             usuario={usuario}
                             onLogout={handleLogout}
                             tienePermiso={(rol, accion) => tienePermiso(rol, accion)}
+                            isOpen={sidebarOpen}
+                            onToggle={() => setSidebarOpen(!sidebarOpen)}
                         />
-                        <main className="flex-1 p-4 overflow-auto flex flex-col">
-                            <div>
-                                <div className="flex items-center gap-2 mb-3 no-print">
-                                    <IconMap className="h-5 w-5"/>
-                                    <h2 className="text-lg font-semibold">Mapa de Sitios</h2>
-                                    <div className="ml-auto flex items-center gap-3">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md">
-                                            <IconUser className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-                                            <span className="text-sm font-medium">{usuario.nombre}</span>
-                                            <span className="text-xs text-neutral-500 dark:text-neutral-400">({ROLES[usuario.rol]})</span>
+                        <main className="flex-1 p-1.5 sm:p-2 md:p-3 lg:p-4 overflow-y-auto overflow-x-hidden flex flex-col min-w-0">
+                            <div className="w-full min-w-0">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 no-print flex-wrap w-full">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => setSidebarOpen(!sidebarOpen)} 
+                                        className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
+                                        aria-label="Abrir menú"
+                                    >
+                                        <IconMenu className="h-4 w-4 sm:h-5 sm:w-5"/>
+                                    </Button>
+                                    <IconMap className="h-4 w-4 sm:h-5 sm:w-5 hidden sm:block"/>
+                                    <h2 className="text-sm sm:text-base md:text-lg font-semibold flex-shrink-0">Mapa de Sitios</h2>
+                                    <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap flex-shrink-0">
+                                        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md">
+                                            <IconUser className="h-3 w-3 sm:h-4 sm:w-4 text-neutral-500 dark:text-neutral-400" />
+                                            <span className="text-[10px] sm:text-xs md:text-sm font-medium truncate max-w-[80px] sm:max-w-[100px] md:max-w-none">{usuario.nombre}</span>
+                                            <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-500 dark:text-neutral-400 hidden md:inline">({ROLES[usuario.rol]})</span>
                                         </div>
-                                        <Badge variant="outline">Modo Local</Badge>
+                                        <Badge variant="outline" className="text-[9px] sm:text-xs">Modo Local</Badge>
                                     </div>
                                 </div>
                                 <SiteGrid 
@@ -1479,8 +1532,8 @@
                                 />
                             </div>
                             {tienePermiso(usuario?.rol, 'registrar_ingresos') && (
-                                <div className="mt-6 border-t pt-4 no-print">
-                                    <Button onClick={() => { setPiscinaForm(DEFAULT_PISCINA_FORM_STATE); setIsPiscinaOpen(true); }} className="w-full md:w-auto"><IconUsers className="h-4 w-4 mr-2" /> Registrar Ingreso a Piscina</Button>
+                                <div className="mt-3 sm:mt-4 md:mt-6 border-t pt-2 sm:pt-3 md:pt-4 no-print">
+                                    <Button onClick={() => { setPiscinaForm(DEFAULT_PISCINA_FORM_STATE); setIsPiscinaOpen(true); }} className="w-full md:w-auto text-xs sm:text-sm h-8 sm:h-9 md:h-10"><IconUsers className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> <span className="hidden sm:inline">Registrar Ingreso a </span>Piscina</Button>
                                 </div>
                             )}
                         </main>
