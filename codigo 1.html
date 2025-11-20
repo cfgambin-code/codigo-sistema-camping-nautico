@@ -434,7 +434,7 @@
                     'Piscina Hoy': 'text-cyan-500',
                     'Personas Hoy': 'text-indigo-500' 
                 }[label] || 'text-neutral-800'; 
-                return ( <div className="rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 border shadow-sm bg-white dark:bg-neutral-900"><div className="text-[10px] sm:text-xs opacity-70 leading-tight">{label}</div><div className={`mt-0.5 sm:mt-1 text-base sm:text-lg md:text-xl font-semibold ${colorClass} leading-tight`}>{value}</div></div> ); 
+                return ( <div className="rounded-lg md:rounded-xl p-1.5 md:p-2 lg:p-2.5 border shadow-sm bg-white dark:bg-neutral-900"><div className="text-xs opacity-70 leading-tight">{label}</div><div className={`mt-0.5 text-base md:text-lg lg:text-xl font-semibold ${colorClass} leading-tight`}>{value}</div></div> ); 
             };
             return (
                 <>
@@ -445,47 +445,48 @@
                             onClick={onToggle}
                         />
                     )}
-                    <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 sm:w-72 p-2 sm:p-3 md:p-4 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200/60 dark:border-neutral-800 flex flex-col gap-2 sm:gap-3 md:gap-4 no-print transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 h-screen lg:h-auto overflow-y-auto`}>
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-base sm:text-lg md:text-xl font-semibold leading-tight">Camping Náutico Rapel</h1>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                                <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema" className="h-8 w-8 sm:h-10 sm:w-10">{isDark ? <IconSun className="h-3 w-3 sm:h-4 sm:w-4"/> : <IconMoon className="h-3 w-3 sm:h-4 sm:w-4"/>}</Button>
-                                <Button variant="ghost" size="icon" onClick={onToggle} className="lg:hidden h-8 w-8 sm:h-10 sm:w-10" aria-label="Cerrar menú"><IconX className="h-3 w-3 sm:h-4 sm:w-4"/></Button>
+                    <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-40 md:w-48 lg:w-56 xl:w-64 p-2 md:p-3 lg:p-4 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200/60 dark:border-neutral-800 flex flex-col no-print transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 h-screen overflow-hidden`}>
+                        <div className="flex items-center justify-between flex-shrink-0 mb-2 md:mb-3">
+                            <h1 className="text-sm md:text-base lg:text-lg font-semibold leading-tight">Camping Náutico Rapel</h1>
+                            <div className="flex items-center gap-1 md:gap-1.5 lg:gap-2">
+                                <Button variant="ghost" size="icon" onClick={onSetDark} aria-label="Cambiar tema" className="h-7 w-7 md:h-8 md:w-8 lg:h-9 lg:w-9 xl:h-10 xl:w-10">{isDark ? <IconSun className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4"/> : <IconMoon className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4"/>}</Button>
+                                <Button variant="ghost" size="icon" onClick={onToggle} className="lg:hidden h-7 w-7 md:h-8 md:w-8" aria-label="Cerrar menú"><IconX className="h-3 w-3 md:h-4 md:w-4"/></Button>
                             </div>
                         </div>
+                        <div className="flex-1 min-h-0 flex flex-col gap-2 md:gap-2.5 lg:gap-3 overflow-hidden">
                     {usuario && (
-                        <Card>
-                            <CardContent className="pt-3 sm:pt-4 md:pt-6 p-2 sm:p-4">
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <IconUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+                        <Card className="flex-shrink-0">
+                            <CardContent className="pt-2 md:pt-2.5 lg:pt-3 p-2 md:p-2.5 lg:p-3">
+                                <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5">
+                                    <div className="w-7 h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <IconUser className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 xl:h-5 xl:w-5 text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs sm:text-sm font-semibold truncate">{usuario.nombre}</p>
-                                        <p className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">{ROLES[usuario.rol]}</p>
+                                        <p className="text-xs md:text-sm lg:text-base font-semibold truncate">{usuario.nombre}</p>
+                                        <p className="text-[10px] md:text-xs lg:text-sm text-neutral-500 dark:text-neutral-400">{ROLES[usuario.rol]}</p>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
                     {tienePermiso(usuario?.rol, 'ver_resumen') && (
-                        <Card>
-                            <CardHeader className="pb-1 sm:pb-2 p-2 sm:p-4"><CardTitle className="text-sm sm:text-base">Estado general</CardTitle></CardHeader>
-                            <CardContent className="grid grid-cols-2 gap-1.5 sm:gap-2 p-2 sm:p-4 pt-0">
+                        <Card className="flex-shrink-0">
+                            <CardHeader className="pb-1 md:pb-1.5 lg:pb-2 p-2 md:p-2.5 lg:p-3"><CardTitle className="text-xs md:text-sm lg:text-base">Estado general</CardTitle></CardHeader>
+                            <CardContent className="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 p-2 md:p-2.5 lg:p-3 pt-0">
                                 <Estado label="Libres" value={resumen.libres}/>
                                 <Estado label="Reservados" value={resumen.reservados}/>
                                 <Estado label="Ocupados" value={resumen.ocupados}/>
                                 <Estado label="Mant." value={resumen.mant}/>
                                 <Estado label="Piscina Hoy" value={resumen.piscinaHoy} />
                                 <Estado label="Personas Hoy" value={resumen.personasHoy} />
-                                <div className="col-span-2 text-xs sm:text-sm mt-1 sm:mt-2"><b>Ingreso estimado: </b><span className="text-[10px] sm:text-xs">${resumen.ingresoEstimado.toLocaleString("es-CL")}</span></div>
+                                <div className="col-span-2 text-xs md:text-sm lg:text-base mt-1"><b>Ingreso estimado: </b><span className="text-[10px] md:text-xs lg:text-sm">${resumen.ingresoEstimado.toLocaleString("es-CL")}</span></div>
                             </CardContent>
                         </Card>
                     )}
                     {tienePermiso(usuario?.rol, 'ver_resumen') && (
-                        <Card>
-                            <CardHeader className="pb-1 sm:pb-2 p-2 sm:p-4"><CardTitle className="text-sm sm:text-base">Filtrar sitios</CardTitle></CardHeader>
-                            <CardContent className="p-2 sm:p-4 pt-0">
+                        <Card className="flex-shrink-0">
+                            <CardHeader className="pb-1 md:pb-1.5 lg:pb-2 p-2 md:p-2.5 lg:p-3"><CardTitle className="text-xs md:text-sm lg:text-base">Filtrar sitios</CardTitle></CardHeader>
+                            <CardContent className="p-2 md:p-2.5 lg:p-3 pt-0">
                                 <Select value={filtroEstado} onValueChange={setFiltroEstado}>
                                     <SelectItem value="todos">Todos</SelectItem><SelectItem value="libre">Libres</SelectItem>
                                     <SelectItem value="reservado">Reservados</SelectItem><SelectItem value="ocupado">Ocupados</SelectItem>
@@ -494,23 +495,24 @@
                             </CardContent>
                         </Card>
                     )}
-                    <div className="mt-auto flex flex-col gap-1.5 sm:gap-2">
+                        </div>
+                    <div className="flex-shrink-0 flex flex-col gap-1.5 md:gap-2 lg:gap-2.5 mt-2 md:mt-3">
                         {tienePermiso(usuario?.rol, 'ver_mapa') && (
-                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenMapa}><IconMap className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Ver Mapa</Button>
+                            <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="outline" onClick={onOpenMapa}><IconMap className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Ver Mapa</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'ingresar_gastos') && (
-                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Gastos</Button>
+                            <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="outline" onClick={onOpenGastos}><IconShoppingCart className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Gastos</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'ver_reportes') && (
-                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenReportes}><IconFileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Reportes</Button>
+                            <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="outline" onClick={onOpenReportes}><IconFileText className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Reportes</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'configurar_tarifas') && (
-                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="outline" onClick={onOpenSettings}><IconSettings className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Configuración</Button>
+                            <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="outline" onClick={onOpenSettings}><IconSettings className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Configuración</Button>
                         )}
                         {tienePermiso(usuario?.rol, 'exportar_datos') && (
-                            <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Exportar</Button>
+                            <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="secondary" onClick={onOpenImportExport}><IconCalendar className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Exportar</Button>
                         )}
-                        <Button className="w-full text-xs sm:text-sm h-8 sm:h-10" variant="destructive" onClick={onLogout}><IconLogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"/> Cerrar Sesión</Button>
+                        <Button className="w-full text-xs md:text-sm lg:text-base h-7 md:h-8 lg:h-9" variant="destructive" onClick={onLogout}><IconLogOut className="h-3 w-3 md:h-4 md:w-4 lg:h-4 lg:w-4 mr-1 md:mr-1.5 lg:mr-2"/> Cerrar Sesión</Button>
                     </div>
                 </aside>
             </>
@@ -998,30 +1000,30 @@
 
             return (
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogContent className="max-w-6xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
+                    <DialogContent className="!max-w-[80vw] w-[80vw] h-[98vh] max-h-[99vh] flex flex-col p-0">
                         <DialogCloseButton onClick={() => setIsOpen(false)} />
-                        <DialogHeader className="p-4 sm:p-6 border-b">
+                        <DialogHeader className="px-3 py-1.5 border-b">
                             <DialogTitle className="text-base sm:text-lg">Ingreso de Gastos Diarios</DialogTitle>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-0.5">
                                 <Label htmlFor="gasto-date" className="text-xs sm:text-sm">Mostrando gastos para la fecha:</Label>
                                 <Input id="gasto-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-48" />
                             </div>
                         </DialogHeader>
-                        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-                        <Tabs defaultValue="compra">
+                        <div className="flex-1 overflow-y-auto p-2 sm:p-3 min-h-0">
+                        <Tabs defaultValue="compra" className="h-full flex flex-col">
                             <TabsList className="grid w-full grid-cols-2">
                                 <TabsTrigger value="compra">Compra</TabsTrigger>
                                 <TabsTrigger value="pago">Pago Días Trabajados</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="compra">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 items-end mt-4">
-                                    <div><Label>Nº Documento</Label><Input value={nuevoGastoCompra.doc} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, doc: e.target.value})} /></div>
-                                    <div><Label>RUT Proveedor</Label><Input value={nuevoGastoCompra.rut} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, rut: e.target.value})}/></div>
-                                    <div className="col-span-2"><Label>Monto</Label><Input type="number" value={nuevoGastoCompra.monto} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, monto: parseInt(e.target.value || '0')})} /></div>
-                                    <div className="sm:col-span-2 lg:col-span-4"><Label>Observaciones</Label><textarea value={nuevoGastoCompra.observaciones} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, observaciones: e.target.value})} className="flex w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 text-sm" /></div>
-                                    <div className="sm:col-span-2 lg:col-span-4"><Button className="w-full" onClick={() => handleAddGasto('compra')}>Agregar Gasto de Compra</Button></div>
+                            <TabsContent value="compra" className="h-full flex flex-col">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-10 gap-2 sm:gap-3 items-end mt-1">
+                                    <div className="lg:col-span-1"><Label>Nº Documento</Label><Input value={nuevoGastoCompra.doc} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, doc: e.target.value})} /></div>
+                                    <div className="sm:col-span-1 lg:col-span-2"><Label>RUT Proveedor</Label><Input value={nuevoGastoCompra.rut} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, rut: e.target.value})}/></div>
+                                    <div className="lg:col-span-2"><Label>Monto</Label><Input type="number" value={nuevoGastoCompra.monto} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, monto: parseInt(e.target.value || '0')})} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
+                                    <div className="sm:col-span-2 lg:col-span-4"><Label>Observaciones</Label><Input value={nuevoGastoCompra.observaciones} onChange={e => setNuevoGastoCompra({...nuevoGastoCompra, observaciones: e.target.value})} /></div>
+                                    <div className="sm:col-span-2 lg:col-span-10"><Button className="w-full" onClick={() => handleAddGasto('compra')}>Agregar Gasto de Compra</Button></div>
                                 </div>
-                                <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
+                                <div className="flex-1 overflow-y-auto min-h-0 border rounded-md mt-1">
                                    <table className="w-full text-sm">
                                       <thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Nº Doc</th><th className="p-2 text-left">RUT</th><th className="p-2 text-left">Observaciones</th><th className="p-2 text-right">Monto</th></tr></thead>
                                       <tbody>{gastosDelDia.filter(g => g.type === 'compra').map(g => <tr key={g.id}><td className="p-2">{g.doc}</td><td className="p-2">{g.rut}</td><td className="p-2">{g.observaciones}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>)}</tbody>
@@ -1029,16 +1031,16 @@
                                 </div>
                                 <p className="text-right font-bold mt-2">Total Compras: ${totalGastosCompra.toLocaleString('es-CL')}</p>
                             </TabsContent>
-                            <TabsContent value="pago">
-                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 items-end mt-4">
+                            <TabsContent value="pago" className="h-full flex flex-col">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 items-end mt-1">
                                     <div><Label>RUT</Label><Input value={nuevoGastoPago.rut} onChange={e => setNuevoGastoPago({...nuevoGastoPago, rut: e.target.value})} /></div>
                                     <div><Label>Nombre</Label><Input value={nuevoGastoPago.nombre} onChange={e => setNuevoGastoPago({...nuevoGastoPago, nombre: e.target.value})}/></div>
-                                    <div><Label>Días</Label><Input type="number" value={nuevoGastoPago.dias} onChange={e => setNuevoGastoPago({...nuevoGastoPago, dias: parseInt(e.target.value || '0')})} /></div>
+                                    <div><Label>Días</Label><Input type="number" value={nuevoGastoPago.dias} onChange={e => setNuevoGastoPago({...nuevoGastoPago, dias: parseInt(e.target.value || '0')})} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
                                     <div><Label>Función</Label><Input value={nuevoGastoPago.funcion} onChange={e => setNuevoGastoPago({...nuevoGastoPago, funcion: e.target.value})} /></div>
-                                    <div><Label>Monto Total</Label><Input type="number" value={nuevoGastoPago.monto} onChange={e => setNuevoGastoPago({...nuevoGastoPago, monto: parseInt(e.target.value || '0')})} /></div>
+                                    <div><Label>Monto Total</Label><Input type="number" value={nuevoGastoPago.monto} onChange={e => setNuevoGastoPago({...nuevoGastoPago, monto: parseInt(e.target.value || '0')})} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
                                     <div className="sm:col-span-2 lg:col-span-5"><Button className="w-full" onClick={() => handleAddGasto('pago')}>Agregar Pago</Button></div>
                                 </div>
-                                <div className="mt-4 border rounded-md max-h-48 overflow-y-auto">
+                                <div className="flex-1 overflow-y-auto min-h-0 border rounded-md mt-1">
                                    <table className="w-full text-sm">
                                       <thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Nombre</th><th className="p-2 text-left">Función</th><th className="p-2 text-right">Monto</th></tr></thead>
                                       <tbody>{gastosDelDia.filter(g => g.type === 'pago').map(g => <tr key={g.id}><td className="p-2">{g.nombre}</td><td className="p-2">{g.funcion}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>)}</tbody>
@@ -1048,7 +1050,7 @@
                             </TabsContent>
                         </Tabs>
                         </div>
-                        <div className="flex justify-end p-3 sm:p-6 border-t">
+                        <div className="flex justify-end px-3 py-1.5 border-t">
                             <Button onClick={handleSave} className="w-full sm:w-auto">Guardar Cambios para el Día Seleccionado</Button>
                         </div>
                     </DialogContent>
