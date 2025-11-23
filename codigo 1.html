@@ -29,22 +29,297 @@
 
         /* Estilos para la funcionalidad de impresión de reportes */
         @media print {
-            body * {
-                visibility: hidden; /* Oculta todo por defecto al imprimir */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-            .printable-report, .printable-report * {
-                visibility: visible; /* Muestra solo el reporte y su contenido */
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            body * {
+                visibility: hidden;
+            }
+            /* Mostrar el diálogo completo en impresión */
+            [role="dialog"],
+            [data-state="open"],
+            .relative.z-50 {
+                position: static !important;
+                display: block !important;
+                visibility: visible !important;
+                width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                overflow: visible !important;
+            }
+            /* Asegurar que todos los contenedores con altura máxima sean visibles */
+            [class*="h-[90vh]"],
+            [class*="max-h-[95vh]"],
+            [class*="h-[98vh]"],
+            [class*="max-h-[99vh]"] {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            /* Contenedores con overflow-y-auto deben ser visibles */
+            [class*="overflow-y-auto"] {
+                overflow: visible !important;
+                overflow-y: visible !important;
+            }
+            .printable-report,
+            .printable-report * {
+                visibility: visible !important;
             }
             .printable-report {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 2rem;
-                font-size: 12px;
+                display: block !important;
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: none !important;
+                padding: 1rem 2rem !important;
+                margin: 0 !important;
+                font-size: 12px !important;
+                overflow: visible !important;
+                overflow-y: visible !important;
+                overflow-x: visible !important;
+                flex: none !important;
+                page-break-after: auto !important;
+                background: white !important;
+                border: none !important;
+                /* Forzar que todo el contenido sea visible */
+                transform: none !important;
+                clip: auto !important;
+                clip-path: none !important;
+                -webkit-clip-path: none !important;
+                /* Evitar compresión del contenido */
+                zoom: 1 !important;
+                -webkit-transform: scale(1) !important;
+                transform: scale(1) !important;
+            }
+            /* Asegurar que el contenedor padre también sea visible */
+            .printable-report,
+            .printable-report > *,
+            .printable-report > div {
+                height: auto !important;
+                max-height: none !important;
+                min-height: auto !important;
+                overflow: visible !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+                /* Evitar compresión */
+                box-sizing: border-box !important;
+            }
+            /* Asegurar que todos los contenedores flex padres se expandan */
+            .flex.flex-col,
+            [class*="flex"][class*="flex-col"] {
+                height: auto !important;
+                max-height: none !important;
+                min-height: auto !important;
+                overflow: visible !important;
+                overflow-y: visible !important;
+            }
+            /* Asegurar que cualquier contenedor con flex-1 que contenga printable-report se expanda */
+            .flex-1 {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-y: visible !important;
+            }
+            /* Forzar que todos los elementos dentro del printable-report sean completamente visibles */
+            .printable-report * {
+                display: revert !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                transform: none !important;
+                clip: auto !important;
+                clip-path: none !important;
+                /* Evitar compresión de elementos */
+                min-height: auto !important;
+                max-height: none !important;
+                height: auto !important;
+                zoom: 1 !important;
+                -webkit-transform: scale(1) !important;
+            }
+            /* Asegurar que las tablas no se corten */
+            .printable-report table,
+            .printable-report table * {
+                display: table !important;
+                visibility: visible !important;
+            }
+            .printable-report thead {
+                display: table-header-group !important;
+            }
+            .printable-report tbody {
+                display: table-row-group !important;
+            }
+            .printable-report table {
+                page-break-inside: auto !important;
+                width: 100% !important;
+                border-collapse: collapse !important;
+                /* Permitir que las tablas se dividan entre páginas */
+                table-layout: auto !important;
+            }
+            /* Permitir que las filas de la tabla se dividan entre páginas */
+            .printable-report tbody tr {
+                display: table-row !important;
+                page-break-inside: auto !important;
+                page-break-after: auto !important;
+                break-inside: auto !important;
+            }
+            /* Evitar dividir celdas individuales, pero permitir dividir filas entre páginas */
+            .printable-report tbody td {
+                display: table-cell !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            .printable-report thead tr {
+                display: table-row !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            .printable-report th {
+                display: table-cell !important;
+            }
+            .printable-report thead {
+                display: table-header-group !important;
+            }
+            .printable-report thead tr {
+                page-break-after: avoid !important;
+            }
+            /* Repetir encabezados en cada página */
+            .printable-report thead {
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .printable-report tfoot {
+                display: table-footer-group !important;
+            }
+            .printable-report tbody {
+                display: table-row-group !important;
+            }
+            .printable-report .space-y-6 > * {
+                page-break-inside: auto !important;
+                margin-bottom: 1rem !important;
+                /* Permitir división entre páginas */
+                break-inside: auto !important;
+            }
+            .printable-report .grid {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            .printable-report .card {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            /* Asegurar que las secciones puedan dividirse */
+            .printable-report > div > div {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
             }
             .no-print {
-                display: none !important; /* Oculta elementos que no deben imprimirse */
+                display: none !important;
+            }
+            @page {
+                size: A4;
+                margin: 1.5cm;
+                /* Asegurar que el contenido pueda fluir entre páginas */
+                orphans: 2;
+                widows: 2;
+            }
+            /* Forzar división de páginas cuando sea necesario - evitar compresión */
+            .printable-report {
+                /* Asegurar que no haya restricciones de altura */
+                min-height: 0 !important;
+                /* Forzar que el contenido se divida naturalmente */
+                page-break-before: auto !important;
+                page-break-after: auto !important;
+                /* Forzar que el contenido use su tamaño natural - evitar compresión del navegador */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                /* Asegurar que no se aplique ningún ajuste de escala */
+                -webkit-transform: scale(1) !important;
+                transform: scale(1) !important;
+                zoom: 1 !important;
+            }
+            /* Forzar que el body y html no compriman el contenido */
+            @media print {
+                html, body {
+                    /* Evitar cualquier ajuste automático de escala */
+                    -webkit-transform: scale(1) !important;
+                    transform: scale(1) !important;
+                    zoom: 1 !important;
+                }
+            }
+            /* Forzar división después de secciones grandes */
+            .printable-report > div > div {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            /* Asegurar que las secciones con tablas puedan dividirse */
+            .printable-report > div > div > div,
+            .printable-report > div > div > table,
+            .printable-report table {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            /* Evitar que el navegador comprima el contenido para que quepa en una página */
+            html {
+                height: auto !important;
+            }
+            body {
+                height: auto !important;
+                /* Evitar compresión */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            /* Asegurar que ningún elemento tenga restricciones que compriman el contenido */
+            .printable-report h2,
+            .printable-report h3,
+            .printable-report p,
+            .printable-report div {
+                margin: revert !important;
+                padding: revert !important;
+                line-height: normal !important;
+            }
+            /* Asegurar que las tarjetas (cards) no se compriman */
+            .printable-report .card {
+                min-height: auto !important;
+                height: auto !important;
+                page-break-inside: auto !important;
+            }
+            /* Forzar que el contenido use su tamaño natural y no se comprima */
+            .printable-report,
+            .printable-report * {
+                /* Evitar cualquier transformación que comprima */
+                -webkit-transform: scale(1) !important;
+                transform: scale(1) !important;
+                zoom: 1 !important;
+                /* Asegurar que los elementos mantengan su tamaño */
+                min-width: auto !important;
+                max-width: 100% !important;
+                width: auto !important;
+            }
+            /* Asegurar que las tablas mantengan su tamaño natural */
+            .printable-report table {
+                font-size: inherit !important;
+                line-height: normal !important;
+            }
+            .printable-report td,
+            .printable-report th {
+                padding: 0.5rem !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
             }
         }
         
@@ -250,7 +525,6 @@
             return (
                 <div 
                     className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 animate-in p-4"
-                    onClick={() => onOpenChange && onOpenChange(false)}
                 >
                     <div className="relative" onClick={e => e.stopPropagation()}>{children}</div>
                 </div>
@@ -313,6 +587,7 @@
         const IconLogOut = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>);
         const IconUser = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
         const IconMenu = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>);
+        const IconPrinter = ({ className = "" }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>);
 
 
         const DialogCloseButton = ({ onClick }) => (
@@ -552,7 +827,7 @@
             );
         };
 
-        const FichaDeIngresoDialog = ({ open, onOpenChange, form, setForm, errors, guardarReserva, liberarSitio, tiposDeSitio, tarifasConfig, handleIntegranteChange, handlePagoChange, handleVisitaChange, handleVisitaIntegranteChange, handleAgregarVisita, handleEliminarVisita, handleAgregarVisitaIntegrante, onOpenDescuento, onOpenPatentes, handlePatenteChange }) => { 
+        const FichaDeIngresoDialog = ({ open, onOpenChange, form, setForm, errors, guardarReserva, liberarSitio, tiposDeSitio, tarifasConfig, handleIntegranteChange, handlePagoChange, handleVisitaChange, handleVisitaIntegranteChange, handleAgregarVisita, handleEliminarVisita, handleAgregarVisitaIntegrante, onOpenDescuento, onOpenPatentes, handlePatenteChange, onOpenReporte }) => { 
             const formDias = useMemo(() => diasEstadia(form.checkin || '', form.checkout || ''), [form.checkin, form.checkout]); 
             const { totalEstadia, totalVisitas, subtotal, totalDescuento, totalGeneral } = useMemo(() => calcularCostos(form, tarifasConfig, tiposDeSitio), [form, tarifasConfig, tiposDeSitio]); 
             const totalPagado = useMemo(() => (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0), [form.pagos]); 
@@ -568,16 +843,16 @@
                     <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
                         <Card>
                             <CardHeader><CardTitle className="text-sm sm:text-base">Datos del Titular</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
-                                    <div className="sm:col-span-1 lg:col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={(e) => setForm({ ...form, rut: e.target.value })} />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
-                                    <div className="sm:col-span-1 lg:col-span-3"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
-                                    <div className="sm:col-span-1 lg:col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular} onChange={(e) => setForm({ ...form, edadTitular: parseInt(e.target.value || '18')})} /></div>
-                                    <div className="sm:col-span-1 lg:col-span-2"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={(e) => setForm({ ...form, telefono: e.target.value})} /></div>
-                                    <div className="sm:col-span-1 lg:col-span-2"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value})} /></div>
-                                    <div className="sm:col-span-1 lg:col-span-2 flex items-end gap-1">
-                                        <div className="flex-grow">
-                                            <Label>Patente Principal</Label>
+                            <CardContent className="space-y-4 pr-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-1 sm:gap-2 items-start">
+                                    <div className="sm:col-span-1 lg:col-span-2"><Label>RUT</Label><Input value={form.rut || ''} onChange={(e) => setForm({ ...form, rut: e.target.value })} className="max-w-[70%]" />{errors.rut && <p className="text-xs text-red-500">{errors.rut}</p>}</div>
+                                    <div className="sm:col-span-1 lg:col-span-3 lg:!ml-[-3rem]"><Label>Nombre Completo</Label><Input value={form.nombre || ''} onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>{errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}</div>
+                                    <div className="sm:col-span-1 lg:col-span-1"><Label>Edad</Label><Input type="number" value={form.edadTitular} onChange={(e) => setForm({ ...form, edadTitular: parseInt(e.target.value || '18')})} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-[70%]" /></div>
+                                    <div className="sm:col-span-1 lg:col-span-1 lg:!ml-[-1.5rem] lg:!w-[calc(8.33%+6rem)]"><Label>Teléfono</Label><Input type="tel" value={form.telefono || ''} onChange={(e) => setForm({ ...form, telefono: e.target.value})} className="w-full" /></div>
+                                    <div className="sm:col-span-1 lg:col-span-3"><Label>Email</Label><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value})} /></div>
+                                    <div className="sm:col-span-1 lg:col-span-2 flex items-end gap-1 justify-end lg:!ml-auto">
+                                        <div className="max-w-[60%]">
+                                            <Label>Patente</Label>
                                             <Input value={(form.patentes && form.patentes[0]) || ''} onChange={(e) => handlePatenteChange(0, e.target.value)} />
                                         </div>
                                         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={onOpenPatentes} disabled={!form.rut || !form.nombre || !(form.patentes && form.patentes[0])} title={(!form.rut || !form.nombre || !(form.patentes && form.patentes[0])) ? "Debe ingresar RUT, Nombre y Patente Principal primero" : "Gestionar patentes adicionales"}>
@@ -679,7 +954,13 @@
                             {totalDescuento > 0 && <p className="text-red-600">Descuento: -${totalDescuento.toLocaleString("es-CL")}</p>}
                             <p className="font-bold text-sm sm:text-base">Total a Pagar: ${totalGeneral.toLocaleString("es-CL")}</p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto"><div className="flex gap-2">{form.id && <Button variant="destructive" onClick={() => liberarSitio(form.id)} className="flex-1 sm:flex-none">Liberar Sitio</Button>}<Button onClick={guardarReserva} disabled={Object.keys(errors).length > 0} className="flex-1 sm:flex-none">Guardar Ficha</Button></div></div>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <div className="flex gap-2">
+                                {form.id && <Button variant="outline" onClick={onOpenReporte} className="flex-1 sm:flex-none flex items-center gap-2"><IconPrinter className="h-4 w-4" /> Imprimir</Button>}
+                                {form.id && <Button variant="destructive" onClick={() => liberarSitio(form.id)} className="flex-1 sm:flex-none">Liberar Sitio</Button>}
+                                <Button onClick={guardarReserva} disabled={Object.keys(errors).length > 0} className="flex-1 sm:flex-none">Guardar Ficha</Button>
+                            </div>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog> 
@@ -960,10 +1241,251 @@
                 const checkinsDelDia = reservas.filter(r => r.checkin === selectedDate).length; 
                 return { pagos: pagosDelDia, totalIngresos, desglose, checkins: checkinsDelDia, numPagos: pagosDelDia.length, gastos: gastosDelDia, totalGastos }; 
             }, [selectedDate, reservas, ingresosPiscina, gastos]); 
-            return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Cuadratura de Caja</DialogTitle><DialogDescription className="text-xs sm:text-sm">Selecciona una fecha para generar el reporte.</DialogDescription></DialogHeader><div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-6 no-print border-b"><Label htmlFor="report-date" className="text-xs sm:text-sm">Fecha del Reporte</Label><Input id="report-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-48" /><Button onClick={() => window.print()} className="w-full sm:w-auto sm:ml-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Cuadratura de Caja Diaria</h2><p className="text-lg font-semibold">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Ingreso Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-emerald-600">${reportData.totalIngresos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Gasto Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-red-600">${reportData.totalGastos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nº de Pagos Recibidos</CardTitle><CardDescription className="text-2xl font-bold">{reportData.numPagos}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nuevos Check-Ins (Sitios)</CardTitle><CardDescription className="text-2xl font-bold">{reportData.checkins}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Ingresos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Origen</th><th className="p-2 text-left">Titular</th><th className="p-2 text-left capitalize">Método</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.pagos.map((p, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">{p.origen}</td><td className="p-2">{p.nombre}</td><td className="p-2 capitalize">{p.metodo}</td><td className="p-2 text-right">${p.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.pagos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron pagos en esta fecha.</td></tr>)}</tbody></table></div></div>
+            const handlePrint = () => {
+                // Encontrar todos los contenedores relacionados con el reporte
+                const printableReport = document.querySelector('.printable-report');
+                const dialogContent = printableReport?.closest('.relative.z-50, [role="dialog"]');
+                
+                if (printableReport) {
+                    // Hacer scroll al inicio del contenedor
+                    printableReport.scrollTop = 0;
+                    
+                    // Expandir el contenedor del reporte con estilos más agresivos
+                    const originalReportStyle = printableReport.style.cssText;
+                    printableReport.style.setProperty('height', 'auto', 'important');
+                    printableReport.style.setProperty('max-height', 'none', 'important');
+                    printableReport.style.setProperty('min-height', 'auto', 'important');
+                    printableReport.style.setProperty('overflow', 'visible', 'important');
+                    printableReport.style.setProperty('overflow-y', 'visible', 'important');
+                    printableReport.style.setProperty('overflow-x', 'visible', 'important');
+                    printableReport.style.setProperty('transform', 'none', 'important');
+                    printableReport.style.setProperty('zoom', '1', 'important');
+                    printableReport.style.setProperty('-webkit-transform', 'scale(1)', 'important');
+                    // Forzar que el contenido no se comprima
+                    printableReport.style.setProperty('page-break-inside', 'auto', 'important');
+                    printableReport.style.setProperty('break-inside', 'auto', 'important');
+                    
+                    // Aplicar estilos anti-compresión a todos los elementos dentro del reporte
+                    const allElements = printableReport.querySelectorAll('*');
+                    const originalElementStyles = new Map();
+                    allElements.forEach(el => {
+                        originalElementStyles.set(el, el.style.cssText);
+                        el.style.setProperty('height', 'auto', 'important');
+                        el.style.setProperty('max-height', 'none', 'important');
+                        el.style.setProperty('min-height', 'auto', 'important');
+                        el.style.setProperty('transform', 'none', 'important');
+                        el.style.setProperty('zoom', '1', 'important');
+                        el.style.setProperty('-webkit-transform', 'scale(1)', 'important');
+                    });
+                    
+                    // Expandir el contenedor padre (DialogContent) si existe
+                    if (dialogContent) {
+                        const originalDialogStyle = dialogContent.style.cssText;
+                        dialogContent.style.setProperty('height', 'auto', 'important');
+                        dialogContent.style.setProperty('max-height', 'none', 'important');
+                        dialogContent.style.setProperty('overflow', 'visible', 'important');
+                        
+                        // Expandir también cualquier contenedor flex padre
+                        const flexContainer = dialogContent.querySelector('.flex.flex-col');
+                        if (flexContainer) {
+                            const originalFlexStyle = flexContainer.style.cssText;
+                            flexContainer.style.setProperty('height', 'auto', 'important');
+                            flexContainer.style.setProperty('max-height', 'none', 'important');
+                            flexContainer.style.setProperty('overflow', 'visible', 'important');
+                            flexContainer.style.setProperty('overflow-y', 'visible', 'important');
+                        }
+                        
+                        // Agregar listener para restaurar estilos después de imprimir
+                        const restoreStyles = () => {
+                            printableReport.style.cssText = originalReportStyle;
+                            if (dialogContent) {
+                                dialogContent.style.cssText = originalDialogStyle;
+                            }
+                            if (flexContainer) {
+                                flexContainer.style.cssText = originalFlexStyle;
+                            }
+                            // Restaurar estilos de todos los elementos
+                            originalElementStyles.forEach((originalStyle, el) => {
+                                el.style.cssText = originalStyle;
+                            });
+                            window.removeEventListener('afterprint', restoreStyles);
+                        };
+                        window.addEventListener('afterprint', restoreStyles);
+                    } else {
+                        // Si no hay dialogContent, aún necesitamos restaurar los estilos de los elementos
+                        const restoreStyles = () => {
+                            printableReport.style.cssText = originalReportStyle;
+                            originalElementStyles.forEach((originalStyle, el) => {
+                                el.style.cssText = originalStyle;
+                            });
+                            window.removeEventListener('afterprint', restoreStyles);
+                        };
+                        window.addEventListener('afterprint', restoreStyles);
+                    }
+                    
+                    // Usar requestAnimationFrame para asegurar que el navegador actualice el layout
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            // Esperar un momento adicional para que los estilos se apliquen
+                            setTimeout(() => {
+                                window.print();
+                            }, 100);
+                        });
+                    });
+                } else {
+                    window.print();
+                }
+            };
+            return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Cuadratura de Caja</DialogTitle><DialogDescription className="text-xs sm:text-sm">Selecciona una fecha para generar el reporte.</DialogDescription></DialogHeader><div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-6 no-print border-b"><Label htmlFor="report-date" className="text-xs sm:text-sm">Fecha del Reporte</Label><Input id="report-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-48" /><Button onClick={handlePrint} className="w-full sm:w-auto sm:ml-auto flex items-center gap-2"><IconPrinter className="h-4 w-4" /> Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Cuadratura de Caja Diaria</h2><p className="text-lg font-semibold">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Ingreso Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-emerald-600">${reportData.totalIngresos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Gasto Total del Día</CardTitle><CardDescription className="text-2xl font-bold text-red-600">${reportData.totalGastos.toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nº de Pagos Recibidos</CardTitle><CardDescription className="text-2xl font-bold">{reportData.numPagos}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Nuevos Check-Ins (Sitios)</CardTitle><CardDescription className="text-2xl font-bold">{reportData.checkins}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Ingresos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Origen</th><th className="p-2 text-left">Titular</th><th className="p-2 text-left capitalize">Método</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.pagos.map((p, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">{p.origen}</td><td className="p-2">{p.nombre}</td><td className="p-2 capitalize">{p.metodo}</td><td className="p-2 text-right">${p.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.pagos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron pagos en esta fecha.</td></tr>)}</tbody></table></div></div>
                                 <div><h3 className="font-semibold mb-2">Detalle de Gastos</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Detalle</th><th className="p-2 text-left">Observaciones</th><th className="p-2 text-right">Monto</th></tr></thead><tbody>{reportData.gastos.map((g, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2 capitalize">{g.type}</td><td className="p-2 text-xs">{g.type === 'compra' ? `Doc: ${g.doc} - RUT: ${g.rut}` : `Nombre: ${g.nombre} - Días: ${g.dias} - Función: ${g.funcion}`}</td><td className="p-2 text-xs">{g.observaciones}</td><td className="p-2 text-right">${g.monto.toLocaleString('es-CL')}</td></tr>))}{reportData.gastos.length === 0 && (<tr><td colSpan="4" className="p-4 text-center text-neutral-500">No se registraron gastos en esta fecha.</td></tr>)}</tbody></table></div></div>
                                 <div><h3 className="font-semibold mb-2">Desglose por Forma de Pago</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><Card><CardHeader className="p-4"><CardTitle>Efectivo</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.efectivo || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Débito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.debito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Crédito</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.credito || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Transferencia</CardTitle><CardDescription className="text-xl font-bold">${(reportData.desglose.transferencia || 0).toLocaleString('es-CL')}</CardDescription></CardHeader></Card></div></div></div></div></DialogContent></Dialog> );}
-        function ReporteOcupacion({ isOpen, setIsOpen, reservas }) { const reportData = useMemo(() => { const today = dateToYMD(new Date()); const ocupadosHoy = reservas.filter(r => r.checkin <= today && r.checkout >= today && r.estado === 'ocupado'); const totalPersonasHoy = ocupadosHoy.reduce((sum, r) => sum + (r.adultos || 0) + (r.ninos || 0), 0); return { ocupados: ocupadosHoy, totalSitios: ocupadosHoy.length, totalPersonas: totalPersonasHoy }; }, [reservas]); return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Ocupación Actual</DialogTitle><DialogDescription className="text-xs sm:text-sm">Muestra todos los sitios actualmente ocupados.</DialogDescription></DialogHeader><div className="flex items-center gap-4 p-3 sm:p-6 no-print border-b"><Button onClick={() => window.print()} className="ml-auto w-full sm:w-auto">Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 mt-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Reporte de Ocupación Actual</h2><p className="text-lg font-semibold">{new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card><CardHeader className="p-4"><CardTitle>Total Sitios Ocupados</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalSitios}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Total Personas en Camping</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalPersonas}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Sitios Ocupados</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Sitio</th><th className="p-2 text-left">Titular</th><th className="p-2 text-right">Total Personas</th></tr></thead><tbody>{reportData.ocupados.map((r, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">#{r.sitio}</td><td className="p-2">{r.nombre}</td><td className="p-2 text-right">{r.adultos + r.ninos}</td></tr>))}{reportData.ocupados.length === 0 && (<tr><td colSpan="3" className="p-4 text-center text-neutral-500">No hay sitios ocupados actualmente.</td></tr>)}</tbody></table></div></div></div></div></DialogContent></Dialog> ); }
+        function ReporteOcupacion({ isOpen, setIsOpen, reservas }) { const reportData = useMemo(() => { const today = dateToYMD(new Date()); const ocupadosHoy = reservas.filter(r => r.checkin <= today && r.checkout >= today && r.estado === 'ocupado'); const totalPersonasHoy = ocupadosHoy.reduce((sum, r) => sum + (r.adultos || 0) + (r.ninos || 0), 0); return { ocupados: ocupadosHoy, totalSitios: ocupadosHoy.length, totalPersonas: totalPersonasHoy }; }, [reservas]); return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0"><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader className="p-4 sm:p-6 border-b"><DialogTitle className="text-base sm:text-lg">Reporte: Ocupación Actual</DialogTitle><DialogDescription className="text-xs sm:text-sm">Muestra todos los sitios actualmente ocupados.</DialogDescription></DialogHeader><div className="flex items-center gap-4 p-3 sm:p-6 no-print border-b"><Button onClick={() => window.print()} className="ml-auto w-full sm:w-auto flex items-center gap-2"><IconPrinter className="h-4 w-4" /> Imprimir Reporte</Button></div><div className="printable-report flex-1 overflow-y-auto border rounded-lg p-4 mt-4 bg-white dark:bg-black"><div className="space-y-6"><div className="text-center"><h2 className="text-xl font-bold">Reporte de Ocupación Actual</h2><p className="text-lg font-semibold">{new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card><CardHeader className="p-4"><CardTitle>Total Sitios Ocupados</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalSitios}</CardDescription></CardHeader></Card><Card><CardHeader className="p-4"><CardTitle>Total Personas en Camping</CardTitle><CardDescription className="text-2xl font-bold">{reportData.totalPersonas}</CardDescription></CardHeader></Card></div><div><h3 className="font-semibold mb-2">Detalle de Sitios Ocupados</h3><div className="border rounded-md"><table className="w-full text-sm"><thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-2 text-left">Sitio</th><th className="p-2 text-left">Titular</th><th className="p-2 text-right">Total Personas</th></tr></thead><tbody>{reportData.ocupados.map((r, i) => (<tr key={i} className="border-b dark:border-neutral-800"><td className="p-2">#{r.sitio}</td><td className="p-2">{r.nombre}</td><td className="p-2 text-right">{r.adultos + r.ninos}</td></tr>))}{reportData.ocupados.length === 0 && (<tr><td colSpan="3" className="p-4 text-center text-neutral-500">No hay sitios ocupados actualmente.</td></tr>)}</tbody></table></div></div></div></div></DialogContent></Dialog> ); }
+        
+        function ReporteFichaIngreso({ isOpen, setIsOpen, form, tarifasConfig, tiposDeSitio }) {
+            const { totalEstadia, totalVisitas, subtotal, totalDescuento, totalGeneral } = useMemo(() => calcularCostos(form, tarifasConfig, tiposDeSitio), [form, tarifasConfig, tiposDeSitio]);
+            const totalPagado = useMemo(() => (form.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0), [form.pagos]);
+            
+            const formatDate = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                const date = new Date(dateStr + 'T12:00:00');
+                return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            };
+            
+            const todasLasPersonas = useMemo(() => {
+                const personas = [];
+                if (form.rut && form.nombre) {
+                    personas.push({ rut: form.rut, nombre: form.nombre, edad: form.edadTitular || 0 });
+                }
+                if (form.integrantes && form.integrantes.length > 0) {
+                    form.integrantes.forEach(integrante => {
+                        if (integrante.nombre) {
+                            personas.push({ rut: integrante.rut || '', nombre: integrante.nombre, edad: integrante.edad || 0 });
+                        }
+                    });
+                }
+                return personas;
+            }, [form]);
+            
+            const todasLasPatentes = useMemo(() => {
+                const patentes = [];
+                if (form.patentes && form.patentes.length > 0) {
+                    form.patentes.forEach(patente => {
+                        if (patente && patente.trim() !== '') {
+                            patentes.push(patente);
+                        }
+                    });
+                }
+                if (form.visitas && form.visitas.length > 0) {
+                    form.visitas.forEach(visita => {
+                        if (visita.patente && visita.patente.trim() !== '') {
+                            patentes.push(visita.patente);
+                        }
+                    });
+                }
+                return patentes;
+            }, [form]);
+            
+            return (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogContent className="max-w-4xl w-[95vw] h-[90vh] max-h-[95vh] flex flex-col p-0">
+                        <DialogCloseButton onClick={() => setIsOpen(false)} />
+                        <div className="flex items-center gap-4 p-3 sm:p-6 no-print border-b">
+                            <Button onClick={() => window.print()} className="ml-auto w-full sm:w-auto flex items-center gap-2">
+                                <IconPrinter className="h-4 w-4" />
+                                Imprimir Reporte
+                            </Button>
+                        </div>
+                        <div className="printable-report flex-1 overflow-y-auto border rounded-lg p-6 bg-white dark:bg-black">
+                            <div className="space-y-6">
+                                <div className="text-center border-b pb-4">
+                                    <h2 className="text-2xl font-bold mb-2">FICHA DE INGRESO</h2>
+                                    <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4">
+                                        <div>
+                                            <p className="text-sm text-neutral-600 dark:text-neutral-400">Sitio N°</p>
+                                            <p className="text-3xl font-bold">#{form.sitio}</p>
+                                        </div>
+                                        <div className="border-l pl-4">
+                                            <p className="text-sm text-neutral-600 dark:text-neutral-400">Período de Arriendo</p>
+                                            <p className="text-lg font-semibold">
+                                                {formatDate(form.checkin)} - {formatDate(form.checkout)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-3 border-b pb-2">Personas en el Sitio</h3>
+                                    {todasLasPersonas.length > 0 ? (
+                                        <div className="border rounded-md overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-neutral-100 dark:bg-neutral-800">
+                                                    <tr>
+                                                        <th className="p-3 text-left">RUT</th>
+                                                        <th className="p-3 text-left">Nombre</th>
+                                                        <th className="p-3 text-center">Edad</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {todasLasPersonas.map((persona, i) => (
+                                                        <tr key={i} className="border-b dark:border-neutral-800">
+                                                            <td className="p-3">{persona.rut || 'N/A'}</td>
+                                                            <td className="p-3 font-medium">{persona.nombre}</td>
+                                                            <td className="p-3 text-center">{persona.edad || 'N/A'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-neutral-500 text-center py-4">No hay personas registradas.</p>
+                                    )}
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-3 border-b pb-2">Patentes de Vehículos</h3>
+                                    {todasLasPatentes.length > 0 ? (
+                                        <div className="border rounded-md overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-neutral-100 dark:bg-neutral-800">
+                                                    <tr>
+                                                        <th className="p-3 text-left">#</th>
+                                                        <th className="p-3 text-left">Patente</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {todasLasPatentes.map((patente, i) => (
+                                                        <tr key={i} className="border-b dark:border-neutral-800">
+                                                            <td className="p-3 text-center">{i + 1}</td>
+                                                            <td className="p-3 font-medium">{patente}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-neutral-500 text-center py-4">No hay patentes registradas.</p>
+                                    )}
+                                </div>
+                                
+                                <div className="border-t pt-4">
+                                    <h3 className="text-lg font-semibold mb-3">Información de Pago</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Total a Pagar</p>
+                                            <p className="text-2xl font-bold">${totalGeneral.toLocaleString('es-CL')}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Total Cancelado</p>
+                                            <p className="text-2xl font-bold text-emerald-600">${totalPagado.toLocaleString('es-CL')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            );
+        }
         function ImportExportDialog({ isOpen, setIsOpen, reservas, setReservas, tarifasConfig, setTarifasConfig, tiposDeSitio, setSitios, ingresosPiscina, setIngresosPiscina }) { const [text, setText] = useState(""); const [err, setErr] = useState(null); const handleExport = () => { const dataToExport = JSON.stringify({ reservas, tarifasConfig, tiposDeSitio, ingresosPiscina }, null, 2); setText(dataToExport); }; const handleImport = () => { try { setErr(null); const data = JSON.parse(text); if (typeof data !== 'object' || data === null) throw new Error("El JSON debe ser un objeto válido."); if (data.reservas) setReservas(data.reservas); if (data.tarifasConfig) setTarifasConfig(data.tarifasConfig); if (data.tiposDeSitio) setTiposDeSitio(data.tiposDeSitio); if(data.ingresosPiscina) setIngresosPiscina(data.ingresosPiscina); setIsOpen(false); } catch (e) { setErr(e.message); } }; return ( <Dialog open={isOpen} onOpenChange={setIsOpen}><DialogContent><DialogCloseButton onClick={() => setIsOpen(false)} /><DialogHeader><DialogTitle>Exportar / Importar Datos</DialogTitle></DialogHeader><Tabs defaultValue="exportar"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="exportar">Exportar</TabsTrigger><TabsTrigger value="importar">Importar</TabsTrigger></TabsList><TabsContent value="exportar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" readOnly value={text} placeholder="Haz clic en 'Preparar Exportación' para generar los datos."/><Button onClick={handleExport}>Preparar Exportación</Button></TabsContent><TabsContent value="importar" className="space-y-2 pt-2"><textarea className="w-full h-48 p-2 border rounded-md bg-neutral-50 dark:bg-neutral-900" value={text} onChange={(e) => setText(e.target.value)} placeholder="Pega aquí el JSON exportado."/><Button onClick={handleImport}>Cargar y Reemplazar Datos</Button>{err && <p className="text-sm text-red-600\">{err}</p>}</TabsContent></Tabs></DialogContent></Dialog> );}
 
         function IngresoGastosDialog({ isOpen, setIsOpen, gastos, onSave }) {
@@ -1225,6 +1747,7 @@
             const [isDescuentoOpen, setIsDescuentoOpen] = useState(false);
             const [isPatentesOpen, setIsPatentesOpen] = useState(false);
             const [isMapaOpen, setIsMapaOpen] = useState(false);
+            const [isReporteFichaIngresoOpen, setIsReporteFichaIngresoOpen] = useState(false);
             const [reservasDelSitio, setReservasDelSitio] = useState([]);
             const [filtroEstado, setFiltroEstado] = useState("todos");
             const [formTypeForDialogs, setFormTypeForDialogs] = useState('sitio');
@@ -1321,7 +1844,7 @@
             
             useEffect(() => {
                 const newErrors = {};
-                if (!form.rut || !validarRUT(form.rut)) newErrors.rut = "RUT del titular es inválido.";
+                if (!form.rut || !validarRUT(form.rut)) newErrors.rut = "RUT inválido";
                 if (!form.nombre) newErrors.nombre = "El nombre del titular es requerido.";
                 if (!form.edadTitular || form.edadTitular < 18) newErrors.edadTitular = "El titular debe ser mayor de edad (18+).";
                 if (form.estado !== 'mantenimiento' && (diasEstadia(form.checkin, form.checkout) <= 0)) { newErrors.checkout = "La fecha de salida debe ser igual o posterior a la de entrada."; }
@@ -1417,11 +1940,12 @@
                 if (form.id) {
                     const updatedReserva = { ...form, totalCLP: totalGeneral };
                     setReservas(prev => prev.map(r => r.id === form.id ? updatedReserva : r));
+                    setForm(updatedReserva);
                 } else {
                     const nuevaReserva = { id: uuid(), createdAt: new Date().toISOString(), ...form, totalCLP: totalGeneral };
                     setReservas(prev => [...prev, nuevaReserva]);
+                    setForm(nuevaReserva);
                 }
-                setSheetOpen(false);
             }
             
             function liberarSitio(reservaId) { if (!reservaId) return; setReservas((prev) => prev.filter((r) => r.id !== reservaId)); setSheetOpen(false); }
@@ -1601,7 +2125,8 @@
                     <MapaDialog isOpen={isMapaOpen} setIsOpen={setIsMapaOpen} />
                     
                     <MantenedorTarifas isOpen={isSettingsOpen} setIsOpen={setIsSettingsOpen} config={tarifasConfig} setConfig={setTarifasConfig} sitios={tiposDeSitio} setSitios={setTiposDeSitio} sitiosList={sitiosList} setSitiosList={setSitiosList} reservas={reservas} />
-                    <FichaDeIngresoDialog open={sheetOpen} onOpenChange={setSheetOpen} form={form} setForm={setForm} errors={errors} guardarReserva={guardarReserva} liberarSitio={liberarSitio} tiposDeSitio={tiposDeSitio} tarifasConfig={tarifasConfig} handleIntegranteChange={handleIntegranteChange} handlePagoChange={handlePagoChange} handleVisitaChange={handleVisitaChange} handleVisitaIntegranteChange={handleVisitaIntegranteChange} handleAgregarVisita={handleAgregarVisita} handleEliminarVisita={handleEliminarVisita} handleAgregarVisitaIntegrante={handleAgregarVisitaIntegrante} onOpenDescuento={() => { setFormTypeForDialogs('sitio'); setIsDescuentoOpen(true); }} onOpenPatentes={() => { setFormTypeForDialogs('sitio'); setIsPatentesOpen(true); }} handlePatenteChange={(index, value) => handlePatenteChange(index, value, 'sitio')} />
+                    <FichaDeIngresoDialog open={sheetOpen} onOpenChange={setSheetOpen} form={form} setForm={setForm} errors={errors} guardarReserva={guardarReserva} liberarSitio={liberarSitio} tiposDeSitio={tiposDeSitio} tarifasConfig={tarifasConfig} handleIntegranteChange={handleIntegranteChange} handlePagoChange={handlePagoChange} handleVisitaChange={handleVisitaChange} handleVisitaIntegranteChange={handleVisitaIntegranteChange} handleAgregarVisita={handleAgregarVisita} handleEliminarVisita={handleEliminarVisita} handleAgregarVisitaIntegrante={handleAgregarVisitaIntegrante} onOpenDescuento={() => { setFormTypeForDialogs('sitio'); setIsDescuentoOpen(true); }} onOpenPatentes={() => { setFormTypeForDialogs('sitio'); setIsPatentesOpen(true); }} handlePatenteChange={(index, value) => handlePatenteChange(index, value, 'sitio')} onOpenReporte={() => setIsReporteFichaIngresoOpen(true)} />
+                    <ReporteFichaIngreso isOpen={isReporteFichaIngresoOpen} setIsOpen={setIsReporteFichaIngresoOpen} form={form} tarifasConfig={tarifasConfig} tiposDeSitio={tiposDeSitio} />
                     <DescuentoDialog isOpen={isDescuentoOpen} setIsOpen={setIsDescuentoOpen} form={formTypeForDialogs === 'sitio' ? form : piscinaForm} setForm={formTypeForDialogs === 'sitio' ? setForm : setPiscinaForm} />
                     <PatentesDialog isOpen={isPatentesOpen} setIsOpen={setIsPatentesOpen} form={formTypeForDialogs === 'sitio' ? form : piscinaForm} setForm={formTypeForDialogs === 'sitio' ? setForm : setPiscinaForm} />
                     <ImportExportDialog isOpen={isImportExportOpen} setIsOpen={setIsImportExportOpen} reservas={reservas} setReservas={setReservas} tarifasConfig={tarifasConfig} setTarifasConfig={setTarifasConfig} tiposDeSitio={tiposDeSitio} setSitios={setSitiosList} ingresosPiscina={ingresosPiscina} setIngresosPiscina={setIngresosPiscina} />
